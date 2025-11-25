@@ -2,371 +2,150 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
-const { connectDB, query, getMockCategories, getMockVenues, getMockUsers } = require('./database');
+const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers } = require('./database');
 
 const app = express();
 const server = http.createServer(app);
 
-// Настройка Socket.IO с CORS
+// Настройка Socket.IO
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    transports: ['websocket', 'polling']
+        methods: ["GET", "POST"]
+    }
 });
 
 app.use(cors());
 app.use(express.json());
-
-// Обслуживание статических файлов
 app.use(express.static(__dirname + '/../public'));
 
-// Middleware для логирования запросов
+// Middleware для логирования
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`🕒 ${new Date().toLocaleTimeString()} - ${req.method} ${req.url}`);
     next();
 });
 
-// Подключение к БД (демо-режим)
+// Подключение к демо-БД
 connectDB().then(() => {
-    console.log('🚀 Demo server started successfully');
-}).catch(error => {
-    console.log('⚠️  Server started in demo mode (no database)');
+    console.log('🎯 Demo server started successfully');
+    console.log('📊 Working in DEMO MODE with sample data');
 });
 
-// Хранилище подключенных клиентов
-const connectedClients = new Map();
-
-// Socket.IO обработчики
+// Socket.IO для реального времени
 io.on('connection', (socket) => {
-    console.log('🔌 New client connected:', socket.id);
-    connectedClients.set(socket.id, {
-        connectedAt: new Date(),
-        userAgent: socket.handshake.headers['user-agent']
-    });
-
-    // Отправляем приветственное сообщение
+    console.log('🔌 Client connected:', socket.id);
+    
     socket.emit('connected', { 
-        message: 'Connected to real-time server',
-        clientId: socket.id,
+        message: 'Connected to DEMO server',
+        mode: 'demo',
         timestamp: new Date().toISOString()
     });
 
-    // Обработка запросов от клиента
-    socket.on('requestData', async (data) => {
-        console.log('📥 Data request from client:', socket.id, data);
-        
-        try {
-            let responseData;
-            switch (data.type) {
-                case 'events':
-                    responseData = await query('SELECT * FROM Event');
-                    break;
-                case 'categories':
-                    responseData = await query('SELECT * FROM EventCategories');
-                    break;
-                case 'venues':
-                    responseData = await query('SELECT * FROM Venues');
-                    break;
-                default:
-                    responseData = { error: 'Unknown data type' };
-            }
-            
-            socket.emit('dataResponse', {
-                requestId: data.requestId,
-                data: responseData
-            });
-        } catch (error) {
-            socket.emit('error', {
-                requestId: data.requestId,
-                error: error.message
-            });
-        }
-    });
-
-    // Пинг-понг для проверки соединения
-    socket.on('ping', (data) => {
-        socket.emit('pong', {
-            ...data,
-            serverTime: new Date().toISOString()
-        });
-    });
-
-    // Отслеживание активности пользователя
-    socket.on('userActivity', (data) => {
-        console.log('👤 User activity:', socket.id, data);
-        
-        // Можно сохранять активность в БД для аналитики
-        if (data.action === 'view_event') {
-            // Логируем просмотр мероприятия
-            console.log(`User viewed event: ${data.eventId}`);
-        }
-    });
-
-    // Обработка отключения
-    socket.on('disconnect', (reason) => {
-        console.log('🔌 Client disconnected:', socket.id, reason);
-        connectedClients.delete(socket.id);
-        
-        // Уведомляем других клиентов об отключении (если нужно)
-        socket.broadcast.emit('userDisconnected', {
-            clientId: socket.id,
-            reason: reason
-        });
-    });
-
-    // Обработка ошибок
-    socket.on('error', (error) => {
-        console.error('Socket error from client:', socket.id, error);
+    socket.on('disconnect', () => {
+        console.log('🔌 Client disconnected:', socket.id);
     });
 });
 
-// Функция для оповещения всех клиентов об изменениях
+// Функция для оповещений
 function notifyClients(event, data) {
-    console.log(`📢 Broadcasting ${event} to ${connectedClients.size} clients`);
     io.emit(event, {
         ...data,
-        timestamp: new Date().toISOString(),
-        server: 'event-management'
+        demo: true,
+        timestamp: new Date().toISOString()
     });
 }
-
-// Функция для отправки уведомлений конкретному пользователю
-function notifyUser(userId, event, data) {
-    // Здесь можно реализовать логику отправки конкретному пользователю
-    // Пока отправляем всем
-    notifyClients(event, data);
-}
-
-// Функция для напоминаний о мероприятиях
-function startEventReminders() {
-    setInterval(async () => {
-        try {
-            const now = new Date();
-            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-            
-            // Ищем мероприятия, которые начнутся в течение часа
-            const upcomingEvents = await query(`
-                SELECT EventId, EventName, DateTimeStart 
-                FROM Event 
-                WHERE DateTimeStart BETWEEN '${now.toISOString()}' AND '${oneHourFromNow.toISOString()}'
-                AND Status = 'Согласован'
-            `);
-            
-            if (upcomingEvents.length > 0) {
-                upcomingEvents.forEach(event => {
-                    notifyClients('eventReminder', {
-                        eventId: event.EventId,
-                        eventName: event.EventName,
-                        startTime: event.DateTimeStart,
-                        message: `Мероприятие "${event.EventName}" начнется через 1 час`
-                    });
-                });
-            }
-        } catch (error) {
-            console.error('Error checking event reminders:', error);
-        }
-    }, 5 * 60 * 1000); // Проверяем каждые 5 минут
-}
-
-// Запускаем систему напоминаний
-startEventReminders();
 
 // API Routes
-
-// Корневой маршрут
-app.get('/', (req, res) => {
-    res.json({
-        message: 'Event Management System API',
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        realtime: true,
-        connectedClients: connectedClients.size
-    });
-});
 
 // Статус сервера
 app.get('/api/status', (req, res) => {
     res.json({
         status: 'online',
+        mode: 'demo',
         serverTime: new Date().toISOString(),
-        uptime: process.uptime(),
-        connectedClients: connectedClients.size,
-        memory: process.memoryUsage(),
-        demoMode: true
+        message: 'Working in DEMO MODE with sample data',
+        version: '1.0.0'
     });
 });
 
-// Аутентификация
+// Аутентификация (всегда успешна в демо-режиме)
 app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { login, password } = req.body;
-        
-        console.log(`🔐 Login attempt: ${login}`);
-        
-        // Демо-логика аутентификации
-        const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
-            INNER JOIN Role r ON u.RoleId = r.RoleId 
-            WHERE u.Login = '${login}' AND u.Password = '${password}'
-        `);
-        
-        let user;
-        if (users.length > 0) {
-            user = users[0];
-        } else {
-            // Демо-режим: создаем временного пользователя
-            user = getMockUsers().find(u => u.Login === 'demo') || getMockUsers()[0];
-        }
-        
-        // Проверка роли - ограничение доступа
-        if (user.RoleName === 'Администратор' || user.RoleName === 'Организатор') {
-            res.status(403).json({
-                success: false,
-                message: 'Доступ ограничен!'
-            });
-            return;
-        }
-
-        res.json({
-            success: true,
-            user: user,
-            demo: users.length === 0 // Помечаем если это демо-авторизация
-        });
-        
-        // Уведомляем о успешной авторизации
-        notifyClients('userLoggedIn', {
-            userId: user.UserId,
-            userName: `${user.LastName} ${user.Name}`,
-            timestamp: new Date().toISOString()
-        });
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({
+    const { login, password } = req.body;
+    
+    console.log(`🔐 Demo login: ${login}`);
+    
+    // В демо-режиме любой логин/пароль работает
+    const demoUser = getDemoUsers().find(u => u.Login === 'demo') || getDemoUsers()[0];
+    
+    // Но ограничиваем доступ для Администраторов/Организаторов
+    if (demoUser.RoleName === 'Администратор' || demoUser.RoleName === 'Организатор') {
+        return res.status(403).json({
             success: false,
-            message: 'Ошибка сервера'
+            message: 'Доступ ограничен в демо-режиме!'
         });
     }
+
+    res.json({
+        success: true,
+        user: demoUser,
+        demo: true,
+        message: 'Демо-авторизация успешна'
+    });
 });
 
 // Получение мероприятий
 app.get('/api/events', async (req, res) => {
     try {
-        const events = await query(`
-            SELECT 
-                e.EventId,
-                e.EventName,
-                e.Description,
-                e.DateTimeStart,
-                e.DateTimeFinish,
-                ec.CategoryName,
-                v.VenueName,
-                u.LastName + ' ' + u.Name as UserName,
-                e.Status,
-                e.EstimatedBudget,
-                e.ActualBudget,
-                e.MaxNumOfGuests,
-                'Демо-клиенты' as ClientsDisplay
-            FROM Event e
-            LEFT JOIN EventCategories ec ON e.CategoryId = ec.CategoryId
-            LEFT JOIN Venues v ON e.VenueId = v.VenueId
-            LEFT JOIN Users u ON e.UserId = u.UserId
-            ORDER BY e.DateTimeStart
-        `);
-        
+        const events = await query('SELECT * FROM Event ORDER BY DateTimeStart');
         res.json(events);
     } catch (error) {
-        console.error('Events API error:', error);
-        res.status(500).json({ 
-            error: error.message,
-            demo: true
-        });
+        res.json(getDemoEvents());
     }
 });
 
-// Добавление мероприятия
+// Добавление мероприятия (демо-симуляция)
 app.post('/api/events', async (req, res) => {
-    try {
-        const {
-            EventName, Description, DateTimeStart, DateTimeFinish,
-            Status, EstimatedBudget, MaxNumOfGuests, CategoryId,
-            VenueId, UserId
-        } = req.body;
-        
-        console.log('📝 New event creation:', EventName);
-        
-        // В демо-режиме просто логируем
-        await query(`
-            INSERT INTO Event (
-                EventName, Description, DateTimeStart, DateTimeFinish,
-                Status, EstimatedBudget, ActualBudget, MaxNumOfGuests,
-                CategoryId, VenueId, UserId
-            ) VALUES (
-                '${EventName}', '${Description}', '${DateTimeStart}', '${DateTimeFinish}',
-                '${Status}', ${EstimatedBudget}, 0, ${MaxNumOfGuests},
-                ${CategoryId}, ${VenueId}, ${UserId}
-            )
-        `);
-        
-        // Уведомляем всех клиентов о новом мероприятии
-        notifyClients('eventsUpdated', { 
-            action: 'added',
-            eventName: EventName,
-            eventId: Date.now() // В демо-режиме используем временный ID
-        });
-        
-        res.json({ 
-            success: true, 
-            message: 'Мероприятие добавлено (демо-режим)',
-            demo: true
-        });
-        
-    } catch (error) {
-        console.error('Add event error:', error);
-        res.status(500).json({ 
-            error: error.message,
-            demo: true
-        });
-    }
+    const { EventName, Description } = req.body;
+    
+    console.log(`📝 Demo: Creating event "${EventName}"`);
+    
+    // Симулируем задержку как в реальной БД
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    notifyClients('eventsUpdated', { 
+        action: 'added',
+        eventName: EventName,
+        message: 'Мероприятие добавлено (демо-режим)'
+    });
+    
+    res.json({ 
+        success: true, 
+        message: 'Мероприятие успешно добавлено в демо-режиме',
+        demo: true,
+        eventId: Date.now()
+    });
 });
 
-// Обновление бюджета
+// Обновление бюджета (демо-симуляция)
 app.put('/api/events/:id/budget', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { ActualBudget } = req.body;
-        
-        console.log(`💰 Budget update for event ${id}: ${ActualBudget}`);
-        
-        await query(`
-            UPDATE Event 
-            SET ActualBudget = ${ActualBudget} 
-            WHERE EventId = ${id}
-        `);
-        
-        notifyClients('eventsUpdated', { 
-            action: 'budget_updated', 
-            eventId: id,
-            newBudget: ActualBudget
-        });
-        
-        res.json({ 
-            success: true, 
-            message: 'Бюджет обновлен (демо-режим)',
-            demo: true
-        });
-        
-    } catch (error) {
-        console.error('Budget update error:', error);
-        res.status(500).json({ 
-            error: error.message,
-            demo: true
-        });
-    }
+    const { id } = req.params;
+    const { ActualBudget } = req.body;
+    
+    console.log(`💰 Demo: Updating budget for event ${id} to ${ActualBudget}`);
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    notifyClients('eventsUpdated', { 
+        action: 'budget_updated', 
+        eventId: id,
+        newBudget: ActualBudget
+    });
+    
+    res.json({ 
+        success: true, 
+        message: 'Бюджет обновлен в демо-режиме',
+        demo: true
+    });
 });
 
 // Получение категорий
@@ -375,8 +154,7 @@ app.get('/api/categories', async (req, res) => {
         const categories = await query('SELECT * FROM EventCategories');
         res.json(categories);
     } catch (error) {
-        console.error('Categories API error:', error);
-        res.json(getMockCategories());
+        res.json(getDemoCategories());
     }
 });
 
@@ -386,104 +164,104 @@ app.get('/api/venues', async (req, res) => {
         const venues = await query('SELECT * FROM Venues');
         res.json(venues);
     } catch (error) {
-        console.error('Venues API error:', error);
-        res.json(getMockVenues());
+        res.json(getDemoVenues());
     }
 });
 
 // Получение менеджеров
 app.get('/api/managers', async (req, res) => {
     try {
-        const managers = await query(`
-            SELECT UserId, LastName + ' ' + Name + ' ' + MiddleName as DisplayName, Specialty
-            FROM Users WHERE RoleId = 2
-        `);
-        res.json(managers);
+        const managers = await query('SELECT UserId, DisplayName, Specialty FROM Managers');
+        res.json(getDemoManagers());
     } catch (error) {
-        console.error('Managers API error:', error);
-        const mockUsers = getMockUsers();
-        const managers = mockUsers.map(user => ({
-            UserId: user.UserId,
-            DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName}`,
-            Specialty: user.Specialty
-        }));
-        res.json(managers);
+        res.json(getDemoManagers());
     }
 });
 
-// Получение всех пользователей
+// Получение пользователей
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
-            INNER JOIN Role r ON u.RoleId = r.RoleId
-        `);
-        res.json(users);
+        const users = await query('SELECT * FROM Users');
+        res.json(getDemoUsers());
     } catch (error) {
-        console.error('Users API error:', error);
-        res.json(getMockUsers());
+        res.json(getDemoUsers());
     }
+});
+
+// Демо-страница
+app.get('/api/demo', (req, res) => {
+    res.json({
+        message: '🎯 Event Management System - DEMO MODE',
+        features: [
+            'Real-time updates',
+            'Sample data', 
+            'Full functionality',
+            'No database required'
+        ],
+        credentials: [
+            { login: 'demo', password: 'demo' },
+            { login: 'ivanov', password: '123' },
+            { login: 'petrova', password: '123' }
+        ],
+        data: {
+            events: getDemoEvents().length,
+            categories: getDemoCategories().length,
+            venues: getDemoVenues().length,
+            users: getDemoUsers().length
+        }
+    });
 });
 
 // Обработка 404
 app.use('*', (req, res) => {
     res.status(404).json({
         error: 'Route not found',
-        path: req.originalUrl,
+        mode: 'demo',
         availableRoutes: [
             '/api/events',
-            '/api/categories', 
-            '/api/venues',
+            '/api/categories',
+            '/api/venues', 
             '/api/managers',
             '/api/users',
             '/api/auth/login',
-            '/api/status'
+            '/api/status',
+            '/api/demo'
         ]
-    });
-});
-
-// Обработка ошибок
-app.use((error, req, res, next) => {
-    console.error('🚨 Server error:', error);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: error.message,
-        demo: true
     });
 });
 
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-    console.log(`🎯 Server running on port ${PORT}`);
-    console.log(`📱 Access: http://localhost:${PORT}`);
-    console.log(`🔗 Real-time WebSocket: ws://localhost:${PORT}`);
-    console.log(`🔑 Demo login: "demo" / "demo"`);
-    console.log(`👥 Connected clients: ${connectedClients.size}`);
-    console.log('🚀 Real-time features:');
-    console.log('   • Instant data updates');
-    console.log('   • Event reminders');
-    console.log('   • Multi-user synchronization');
-    console.log('   • Connection status monitoring');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('🛑 Received SIGTERM, shutting down gracefully...');
-    notifyClients('serverShutdown', { message: 'Server is restarting' });
-    server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
+    console.log('🎉 ==================================');
+    console.log('🚀 Event Management System - DEMO MODE');
+    console.log('📡 Server running on port:', PORT);
+    console.log('🌐 Access:', `http://localhost:${PORT}`);
+    console.log('🔑 Demo credentials:');
+    console.log('   👤 Login: "demo"');
+    console.log('   🔐 Password: "demo"');
+    console.log('📊 Sample data loaded:', {
+        events: getDemoEvents().length,
+        categories: getDemoCategories().length, 
+        venues: getDemoVenues().length,
+        users: getDemoUsers().length
     });
+    console.log('🎯 Real-time features: ACTIVE');
+    console.log('==================================');
 });
 
-process.on('SIGINT', () => {
-    console.log('🛑 Received SIGINT, shutting down...');
-    server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-    });
-});
+// Вспомогательная функция
+function getDemoEvents() {
+    // Импортируем из database.js
+    const { getDemoData } = require('./database');
+    return getDemoData('SELECT * FROM Event');
+}
 
-module.exports = { app, server, io, notifyClients };
+function getDemoManagers() {
+    const { getDemoUsers } = require('./database');
+    return getDemoUsers().map(user => ({
+        UserId: user.UserId,
+        DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName}`,
+        Specialty: user.Specialty
+    }));
+}
