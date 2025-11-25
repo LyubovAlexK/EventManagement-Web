@@ -3,7 +3,7 @@ const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const { connectDB, query, getMockCategories, getMockVenues, getMockUsers, getMockData } = require('./database');
+const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers } = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +21,8 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
-// Обслуживание статических файлов из текущей директории
+// Обслуживание статических файлов
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
 // Middleware для логирования запросов
@@ -203,11 +204,11 @@ app.post('/api/auth/login', async (req, res) => {
             user = users[0];
         } else {
             // Демо-режим: ищем пользователя по логину и паролю
-            user = getMockUsers().find(u => u.Login === login && u.Password === password);
+            user = getDemoUsers().find(u => u.Login === login && u.Password === password);
             
             // Если не нашли, используем демо-пользователя
             if (!user) {
-                user = getMockUsers().find(u => u.Login === 'demo');
+                user = getDemoUsers().find(u => u.Login === 'demo');
             }
         }
         
@@ -258,7 +259,54 @@ app.get('/api/events', async (req, res) => {
     } catch (error) {
         console.error('Events API error:', error);
         // Возвращаем демо-данные напрямую
-        res.json(getMockData());
+        const demoEvents = [
+            {
+                EventId: 1,
+                EventName: "Техническая конференция 2024",
+                Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
+                DateTimeStart: new Date('2024-12-10T09:00:00'),
+                DateTimeFinish: new Date('2024-12-12T18:00:00'),
+                CategoryName: "Конференция",
+                VenueName: "Конференц-зал А",
+                UserName: "Иванов Иван",
+                Status: "Согласован",
+                EstimatedBudget: 150000,
+                ActualBudget: 145000,
+                MaxNumOfGuests: 200,
+                ClientsDisplay: "Петров А., Сидорова М., ООО 'ТехноПро'"
+            },
+            {
+                EventId: 2,
+                EventName: "Корпоративный тренинг",
+                Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
+                DateTimeStart: new Date('2024-12-15T09:00:00'),
+                DateTimeFinish: new Date('2024-12-15T17:00:00'),
+                CategoryName: "Тренинг", 
+                VenueName: "Переговорная Б",
+                UserName: "Петрова Анна",
+                Status: "В обработке",
+                EstimatedBudget: 50000,
+                ActualBudget: 0,
+                MaxNumOfGuests: 25,
+                ClientsDisplay: "ООО 'ТехноПро'"
+            },
+            {
+                EventId: 3,
+                EventName: "Веб-приложение для управления мероприятиями",
+                Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
+                DateTimeStart: new Date('2024-12-01T10:00:00'),
+                DateTimeFinish: new Date('2024-12-01T12:00:00'),
+                CategoryName: "Презентация",
+                VenueName: "Онлайн",
+                UserName: "Кремлакова Любовь",
+                Status: "Согласован",
+                EstimatedBudget: 0,
+                ActualBudget: 0,
+                MaxNumOfGuests: 1,
+                ClientsDisplay: "Курсовая работа"
+            }
+        ];
+        res.json(demoEvents);
     }
 });
 
@@ -353,7 +401,7 @@ app.get('/api/categories', async (req, res) => {
         res.json(categories);
     } catch (error) {
         console.error('Categories API error:', error);
-        res.json(getMockCategories());
+        res.json(getDemoCategories());
     }
 });
 
@@ -364,7 +412,7 @@ app.get('/api/venues', async (req, res) => {
         res.json(venues);
     } catch (error) {
         console.error('Venues API error:', error);
-        res.json(getMockVenues());
+        res.json(getDemoVenues());
     }
 });
 
@@ -378,7 +426,7 @@ app.get('/api/managers', async (req, res) => {
         res.json(managers);
     } catch (error) {
         console.error('Managers API error:', error);
-        const mockUsers = getMockUsers();
+        const mockUsers = getDemoUsers();
         const managers = mockUsers.map(user => ({
             UserId: user.UserId,
             DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName}`,
@@ -399,7 +447,7 @@ app.get('/api/users', async (req, res) => {
         res.json(users);
     } catch (error) {
         console.error('Users API error:', error);
-        res.json(getMockUsers());
+        res.json(getDemoUsers());
     }
 });
 
