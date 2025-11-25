@@ -3,7 +3,7 @@ const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers } = require('./database');
+const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers, getDemoEvents } = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -137,29 +137,44 @@ function startEventReminders() {
     setInterval(async () => {
         try {
             const now = new Date();
-            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+            const events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
             
-            const upcomingEvents = await query(`
-                SELECT EventId, EventName, DateTimeStart 
-                FROM Event 
-                WHERE DateTimeStart BETWEEN '${now.toISOString()}' AND '${oneHourFromNow.toISOString()}'
-                AND Status = 'Согласован'
-            `);
-            
-            if (upcomingEvents.length > 0) {
-                upcomingEvents.forEach(event => {
+            events.forEach(event => {
+                const eventDate = new Date(event.DateTimeStart);
+                const timeDiff = eventDate.getTime() - now.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                
+                // Отправляем уведомления за 1, 2, 3 дня
+                if (daysDiff === 1) {
                     notifyClients('eventReminder', {
                         eventId: event.EventId,
                         eventName: event.EventName,
                         startTime: event.DateTimeStart,
-                        message: `Мероприятие "${event.EventName}" начнется через 1 час`
+                        daysLeft: 1,
+                        message: `"${event.EventName}" начинается ЗАВТРА!`
                     });
-                });
-            }
+                } else if (daysDiff === 2) {
+                    notifyClients('eventReminder', {
+                        eventId: event.EventId,
+                        eventName: event.EventName,
+                        startTime: event.DateTimeStart,
+                        daysLeft: 2,
+                        message: `"${event.EventName}" через 2 дня!`
+                    });
+                } else if (daysDiff === 3) {
+                    notifyClients('eventReminder', {
+                        eventId: event.EventId,
+                        eventName: event.EventName,
+                        startTime: event.DateTimeStart,
+                        daysLeft: 3,
+                        message: `"${event.EventName}" через 3 дня!`
+                    });
+                }
+            });
         } catch (error) {
             console.error('Error checking event reminders:', error);
         }
-    }, 5 * 60 * 1000);
+    }, 60 * 1000); // Проверяем каждую минуту
 }
 
 // Запускаем систему напоминаний
@@ -259,54 +274,7 @@ app.get('/api/events', async (req, res) => {
     } catch (error) {
         console.error('Events API error:', error);
         // Возвращаем демо-данные напрямую
-        const demoEvents = [
-            {
-                EventId: 1,
-                EventName: "Техническая конференция 2024",
-                Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
-                DateTimeStart: new Date('2024-12-10T09:00:00'),
-                DateTimeFinish: new Date('2024-12-12T18:00:00'),
-                CategoryName: "Конференция",
-                VenueName: "Конференц-зал А",
-                UserName: "Иванов Иван",
-                Status: "Согласован",
-                EstimatedBudget: 150000,
-                ActualBudget: 145000,
-                MaxNumOfGuests: 200,
-                ClientsDisplay: "Петров А., Сидорова М., ООО 'ТехноПро'"
-            },
-            {
-                EventId: 2,
-                EventName: "Корпоративный тренинг",
-                Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
-                DateTimeStart: new Date('2024-12-15T09:00:00'),
-                DateTimeFinish: new Date('2024-12-15T17:00:00'),
-                CategoryName: "Тренинг", 
-                VenueName: "Переговорная Б",
-                UserName: "Петрова Анна",
-                Status: "В обработке",
-                EstimatedBudget: 50000,
-                ActualBudget: 0,
-                MaxNumOfGuests: 25,
-                ClientsDisplay: "ООО 'ТехноПро'"
-            },
-            {
-                EventId: 3,
-                EventName: "Веб-приложение для управления мероприятиями",
-                Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
-                DateTimeStart: new Date('2024-12-01T10:00:00'),
-                DateTimeFinish: new Date('2024-12-01T12:00:00'),
-                CategoryName: "Презентация",
-                VenueName: "Онлайн",
-                UserName: "Кремлакова Любовь",
-                Status: "Согласован",
-                EstimatedBudget: 0,
-                ActualBudget: 0,
-                MaxNumOfGuests: 1,
-                ClientsDisplay: "Курсовая работа"
-            }
-        ];
-        res.json(demoEvents);
+        res.json(getDemoEvents());
     }
 });
 
@@ -483,9 +451,10 @@ server.listen(PORT, () => {
     console.log(`🔑 Demo login: "demo" / "demo"`);
     console.log('🚀 Real-time features:');
     console.log('   • Instant data updates');
-    console.log('   • Event reminders');
+    console.log('   • Event reminders (1, 2, 3 days before)');
     console.log('   • Multi-user synchronization');
     console.log('   • Connection status monitoring');
+    console.log('   • Mobile responsive design');
 });
 
 // Graceful shutdown

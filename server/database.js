@@ -46,6 +46,23 @@ function getDemoData(sqlQuery) {
 
 // Демо данные мероприятий
 function getDemoEvents() {
+    const now = new Date();
+    
+    // Мероприятие через 3 дня
+    const in3Days = new Date(now);
+    in3Days.setDate(now.getDate() + 3);
+    in3Days.setHours(14, 0, 0, 0);
+    
+    // Мероприятие через 1 день
+    const in1Day = new Date(now);
+    in1Day.setDate(now.getDate() + 1);
+    in1Day.setHours(10, 0, 0, 0);
+    
+    // Мероприятие через 5 дней
+    const in5Days = new Date(now);
+    in5Days.setDate(now.getDate() + 5);
+    in5Days.setHours(18, 0, 0, 0);
+
     return [
         {
             EventId: 1,
@@ -106,6 +123,51 @@ function getDemoEvents() {
             ActualBudget: 0,
             MaxNumOfGuests: 150,
             ClientsDisplay: "ООО 'ТехноПро', ИП Сидоров"
+        },
+        {
+            EventId: 5,
+            EventName: "Стратегическое планирование на 2025 год",
+            Description: "Совещание по планированию бизнес-стратегии на следующий год",
+            DateTimeStart: in3Days,
+            DateTimeFinish: new Date(in3Days.getTime() + 4 * 60 * 60 * 1000),
+            CategoryName: "Совещание",
+            VenueName: "Переговорная Б",
+            UserName: "Петрова Анна",
+            Status: "Согласован",
+            EstimatedBudget: 0,
+            ActualBudget: 0,
+            MaxNumOfGuests: 15,
+            ClientsDisplay: "Внутреннее мероприятие"
+        },
+        {
+            EventId: 6,
+            EventName: "Презентация нового продукта",
+            Description: "Анонс и демонстрация нового программного обеспечения",
+            DateTimeStart: in1Day,
+            DateTimeFinish: new Date(in1Day.getTime() + 3 * 60 * 60 * 1000),
+            CategoryName: "Презентация",
+            VenueName: "Конференц-зал А",
+            UserName: "Иванов Иван",
+            Status: "Согласован",
+            EstimatedBudget: 75000,
+            ActualBudget: 70000,
+            MaxNumOfGuests: 100,
+            ClientsDisplay: "Ключевые клиенты, партнеры"
+        },
+        {
+            EventId: 7,
+            EventName: "Мастер-класс по цифровому маркетингу",
+            Description: "Практический мастер-класс для маркетологов компании",
+            DateTimeStart: in5Days,
+            DateTimeFinish: new Date(in5Days.getTime() + 6 * 60 * 60 * 1000),
+            CategoryName: "Мастер-класс",
+            VenueName: "Онлайн",
+            UserName: "Кремлакова Любовь",
+            Status: "Согласован",
+            EstimatedBudget: 25000,
+            ActualBudget: 0,
+            MaxNumOfGuests: 50,
+            ClientsDisplay: "Сотрудники отдела маркетинга"
         }
     ];
 }
@@ -117,7 +179,9 @@ function getDemoCategories() {
         { CategoryId: 2, CategoryName: "Семинар", Description: "Обучающие мероприятия" },
         { CategoryId: 3, CategoryName: "Тренинг", Description: "Практические занятия" },
         { CategoryId: 4, CategoryName: "Корпоратив", Description: "Внутренние мероприятия компании" },
-        { CategoryId: 5, CategoryName: "Презентация", Description: "Презентации продуктов и услуг" }
+        { CategoryId: 5, CategoryName: "Презентация", Description: "Презентации продуктов и услуг" },
+        { CategoryId: 6, CategoryName: "Совещание", Description: "Рабочие встречи и планерки" },
+        { CategoryId: 7, CategoryName: "Мастер-класс", Description: "Практические обучающие сессии" }
     ];
 }
 
@@ -199,5 +263,6 @@ module.exports = {
     query,
     getDemoCategories: getDemoCategories,
     getDemoVenues: getDemoVenues,
-    getDemoUsers: getDemoUsers
+    getDemoUsers: getDemoUsers,
+    getDemoEvents: getDemoEvents
 };

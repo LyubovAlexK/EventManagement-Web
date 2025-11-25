@@ -72,23 +72,6 @@ function showRealtimeNotification(message) {
         </div>
     `;
     
-    // Стили для уведомления
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #10B981;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        animation: slideIn 0.3s ease-out;
-        max-width: 300px;
-    `;
-    
     document.body.appendChild(notification);
     
     // Автоматическое скрытие через 5 секунд
@@ -104,11 +87,26 @@ function showRealtimeNotification(message) {
 function showEventReminder(eventData) {
     const reminder = document.createElement('div');
     reminder.className = 'event-reminder';
+    
+    let icon = '⏰';
+    let bgColor = '#F59E0B';
+    
+    if (eventData.daysLeft === 1) {
+        icon = '🚨';
+        bgColor = '#EF4444';
+    } else if (eventData.daysLeft === 2) {
+        icon = '⚠️';
+        bgColor = '#F59E0B';
+    } else if (eventData.daysLeft === 3) {
+        icon = '📅';
+        bgColor = '#3B82F6';
+    }
+    
     reminder.innerHTML = `
         <div class="reminder-content">
-            <span class="reminder-icon">⏰</span>
+            <span class="reminder-icon">${icon}</span>
             <div class="reminder-text">
-                <strong>Напоминание о мероприятии</strong>
+                <strong>${eventData.message}</strong>
                 <div>${eventData.eventName}</div>
                 <small>Начинается: ${new Date(eventData.startTime).toLocaleString('ru-RU')}</small>
             </div>
@@ -120,7 +118,7 @@ function showEventReminder(eventData) {
         position: fixed;
         top: 80px;
         right: 20px;
-        background: #F59E0B;
+        background: ${bgColor};
         color: white;
         padding: 15px;
         border-radius: 8px;
@@ -207,7 +205,8 @@ function initGlobalHandlers() {
     document.addEventListener('error', (e) => {
         if (e.target.tagName === 'IMG') {
             console.warn('Image failed to load:', e.target.src);
-            e.target.style.display = 'none';
+            // Заменяем на текстовый плейсхолдер
+            e.target.alt = 'Изображение не загружено';
         }
     }, true);
     
@@ -220,6 +219,16 @@ function initGlobalHandlers() {
     window.addEventListener('unhandledrejection', (e) => {
         console.error('Unhandled promise rejection:', e.reason);
     });
+    
+    // Адаптация для мобильных устройств
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Вызываем сразу при загрузке
+}
+
+// Обработка изменения размера окна
+function handleResize() {
+    const isMobile = window.innerWidth <= 768;
+    document.body.classList.toggle('mobile-view', isMobile);
 }
 
 // Глобальные вспомогательные функции
@@ -283,77 +292,5 @@ setInterval(async () => {
         console.warn('API health check failed');
     }
 }, 30000);
-
-// Добавляем CSS анимации
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-    
-    .realtime-notification .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .notification-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        padding: 0;
-        margin-left: auto;
-    }
-    
-    .event-reminder .reminder-content {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .reminder-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        padding: 0;
-        margin-left: auto;
-    }
-    
-    .reminder-text {
-        flex: 1;
-    }
-    
-    .reminder-text strong {
-        display: block;
-        margin-bottom: 5px;
-    }
-    
-    .reminder-text small {
-        opacity: 0.9;
-    }
-`;
-document.head.appendChild(style);
 
 console.log('🎯 Event Management System ready for real-time updates!');
