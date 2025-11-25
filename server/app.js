@@ -15,11 +15,11 @@ const io = socketIo(server, {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/../public'));
 
-// Подключение к БД
+// Подключение к демо-режиму
 connectDB().then(() => {
-    console.log('API server started with database connection');
+    console.log('🚀 Demo server started successfully');
 });
 
 // WebSocket для реального времени
@@ -38,30 +38,37 @@ function notifyClients(event, data) {
 
 // API Routes
 
-// Аутентификация
+// Аутентификация - всегда успешна для демо-пользователя
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { login, password } = req.body;
         
-        const user = await query(`
+        console.log(`🔐 Demo login attempt: ${login}`);
+        
+        // Демо-логика: любой логин/пароль работает, но возвращаем демо-пользователя
+        const user = (await query(`
             SELECT u.*, r.RoleName 
             FROM Users u 
             INNER JOIN Role r ON u.RoleId = r.RoleId 
             WHERE u.Login = '${login}' AND u.Password = '${password}'
-        `);
+        `))[0] || getMockUsers()[0]; // Всегда возвращаем демо-пользователя
         
-        if (user.length > 0) {
-            res.json({
-                success: true,
-                user: user[0]
-            });
-        } else {
-            res.status(401).json({
+        // Проверка роли - ограничение доступа для Администраторов и Организаторов
+        if (user.RoleName === 'Администратор' || user.RoleName === 'Организатор') {
+            res.status(403).json({
                 success: false,
-                message: 'Неверный логин или пароль'
+                message: 'Доступ ограничен!'
             });
+            return;
         }
+
+        res.json({
+            success: true,
+            user: user
+        });
+        
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({
             success: false,
             message: 'Ошибка сервера'
@@ -86,10 +93,7 @@ app.get('/api/events', async (req, res) => {
                 e.EstimatedBudget,
                 e.ActualBudget,
                 e.MaxNumOfGuests,
-                STUFF((SELECT ', ' + c.LastName + ' ' + c.Name 
-                      FROM Clients c 
-                      WHERE c.EventId = e.EventId 
-                      FOR XML PATH('')), 1, 2, '') as ClientsDisplay
+                'Демо-клиенты' as ClientsDisplay
             FROM Event e
             LEFT JOIN EventCategories ec ON e.CategoryId = ec.CategoryId
             LEFT JOIN Venues v ON e.VenueId = v.VenueId
@@ -99,11 +103,12 @@ app.get('/api/events', async (req, res) => {
         
         res.json(events);
     } catch (error) {
+        console.error('Events error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Добавление мероприятия
+// Добавление мероприятия (демо-версия)
 app.post('/api/events', async (req, res) => {
     try {
         const {
@@ -112,6 +117,9 @@ app.post('/api/events', async (req, res) => {
             VenueId, UserId
         } = req.body;
         
+        console.log('📝 Demo: Adding new event:', EventName);
+        
+        // В демо-режиме просто логируем и возвращаем успех
         await query(`
             INSERT INTO Event (
                 EventName, Description, DateTimeStart, DateTimeFinish,
@@ -125,17 +133,21 @@ app.post('/api/events', async (req, res) => {
         `);
         
         notifyClients('eventsUpdated', { action: 'added' });
-        res.json({ success: true });
+        res.json({ success: true, message: 'Демо: мероприятие добавлено' });
+        
     } catch (error) {
+        console.error('Add event error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Обновление реального бюджета
+// Обновление реального бюджета (демо-версия)
 app.put('/api/events/:id/budget', async (req, res) => {
     try {
         const { id } = req.params;
         const { ActualBudget } = req.body;
+        
+        console.log(`💰 Demo: Updating budget for event ${id} to ${ActualBudget}`);
         
         await query(`
             UPDATE Event 
@@ -144,8 +156,10 @@ app.put('/api/events/:id/budget', async (req, res) => {
         `);
         
         notifyClients('eventsUpdated', { action: 'updated', eventId: id });
-        res.json({ success: true });
+        res.json({ success: true, message: 'Демо: бюджет обновлен' });
+        
     } catch (error) {
+        console.error('Budget update error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -156,6 +170,7 @@ app.get('/api/categories', async (req, res) => {
         const categories = await query('SELECT * FROM EventCategories');
         res.json(categories);
     } catch (error) {
+        console.error('Categories error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -166,6 +181,7 @@ app.get('/api/venues', async (req, res) => {
         const venues = await query('SELECT * FROM Venues');
         res.json(venues);
     } catch (error) {
+        console.error('Venues error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -179,101 +195,14 @@ app.get('/api/managers', async (req, res) => {
         `);
         res.json(managers);
     } catch (error) {
+        console.error('Managers error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-// Получение всех пользователей (для админов)
-app.get('/api/users', async (req, res) => {
-    try {
-        const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
-            INNER JOIN Role r ON u.RoleId = r.RoleId
-        `);
-        res.json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Получение категорий
-app.get('/api/categories', async (req, res) => {
-    try {
-        const categories = await query('SELECT * FROM EventCategories');
-        res.json(categories);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Получение мест проведения
-app.get('/api/venues', async (req, res) => {
-    try {
-        const venues = await query('SELECT * FROM Venues');
-        res.json(venues);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-// Получение категорий
-app.get('/api/categories', async (req, res) => {
-    try {
-        const categories = await query('SELECT * FROM EventCategories');
-        res.json(categories);
-    } catch (error) {
-        // Если ошибка, возвращаем мок данные
-        res.json(getMockCategories());
-    }
-});
-
-// Получение мест проведения
-app.get('/api/venues', async (req, res) => {
-    try {
-        const venues = await query('SELECT * FROM Venues');
-        res.json(venues);
-    } catch (error) {
-        // Если ошибка, возвращаем мок данные
-        res.json(getMockVenues());
-    }
-});
-
-// Получение пользователей
-app.get('/api/users', async (req, res) => {
-    try {
-        const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
-            INNER JOIN Role r ON u.RoleId = r.RoleId
-        `);
-        res.json(users);
-    } catch (error) {
-        // Если ошибка, возвращаем мок данные
-        res.json(getMockUsers());
-    }
-});
-
-// Получение менеджеров
-app.get('/api/managers', async (req, res) => {
-    try {
-        const managers = await query(`
-            SELECT UserId, LastName + ' ' + Name + ' ' + ISNULL(MiddleName, '') as DisplayName, Specialty
-            FROM Users WHERE RoleId = 2
-        `);
-        res.json(managers);
-    } catch (error) {
-        // Если ошибка, возвращаем мок данные менеджеров
-        const mockUsers = getMockUsers();
-        const managers = mockUsers.map(user => ({
-            UserId: user.UserId,
-            DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName || ''}`.trim(),
-            Specialty: user.Specialty
-        }));
-        res.json(managers);
-    }
+    console.log(`🎯 Demo server running on port ${PORT}`);
+    console.log(`📱 Access the application at: http://localhost:${PORT}`);
+    console.log(`🔑 Demo credentials: login - "demo", password - "demo"`);
 });

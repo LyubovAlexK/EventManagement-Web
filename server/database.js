@@ -1,78 +1,65 @@
-const sql = require('mssql');
-
-// Настройки для базы данных
-const dbConfig = {
-    server: 'DESKTOP-3HK6G3K\\SQLEXPRESS',
-    database: 'PlanningHoldingEvents_Kremlakova',
-    options: {
-        trustServerCertificate: true,
-        trustedConnection: true // Windows Authentication
-    }
-};
-
-let pool;
-let useMockData = false;
+// server/database.js - Демонстрационная версия
+let useMockData = true;
 
 async function connectDB() {
-    try {
-        pool = await sql.connect(dbConfig);
-        console.log('✅ Connected to SQL Server');
-        return pool;
-    } catch (err) {
-        console.log('❌ Database connection failed, using mock data');
-        console.log('Error details:', err.message);
-        useMockData = true;
-        // Возвращаем объект с методом request для совместимости
-        return {
-            request: () => ({
-                query: async () => ({ recordset: getMockData() })
-            })
-        };
-    }
+    console.log('🚀 Demo mode: Using mock data');
+    return {
+        request: () => ({
+            query: async (sqlQuery) => { 
+                console.log('Demo query:', sqlQuery);
+                
+                // Определяем тип запроса и возвращаем соответствующие данные
+                if (sqlQuery.includes('FROM Users') && sqlQuery.includes('Login')) {
+                    return { recordset: getMockUsers().filter(u => u.Login === 'demo') };
+                } else if (sqlQuery.includes('FROM Event')) {
+                    return { recordset: getMockData() };
+                } else if (sqlQuery.includes('FROM EventCategories')) {
+                    return { recordset: getMockCategories() };
+                } else if (sqlQuery.includes('FROM Venues')) {
+                    return { recordset: getMockVenues() };
+                } else if (sqlQuery.includes('FROM Users') && sqlQuery.includes('RoleId = 2')) {
+                    return { recordset: getMockManagers() };
+                } else if (sqlQuery.includes('FROM Users') && sqlQuery.includes('RoleName')) {
+                    return { recordset: getMockUsers() };
+                } else {
+                    return { recordset: [] };
+                }
+            }
+        })
+    };
 }
 
 async function query(sqlQuery) {
-    // Если используем мок данные
-    if (useMockData) {
-        console.log('Using mock data for query:', sqlQuery);
-        return getMockData();
+    console.log('📊 Demo query executed:', sqlQuery.substring(0, 100) + '...');
+    
+    // Обрабатываем INSERT/UPDATE запросы для демо
+    if (sqlQuery.includes('INSERT INTO') || sqlQuery.includes('UPDATE ')) {
+        console.log('✅ Demo: Data operation simulated successfully');
+        return [];
     }
     
-    // Если pool не определен, возвращаем мок данные
-    if (!pool) {
-        console.log('Database pool not available, using mock data');
+    // Возвращаем данные в зависимости от запроса
+    if (sqlQuery.includes('FROM Users') && sqlQuery.includes('Login')) {
+        return getMockUsers().filter(u => u.Login === 'demo');
+    } else if (sqlQuery.includes('FROM Event')) {
         return getMockData();
+    } else if (sqlQuery.includes('FROM EventCategories')) {
+        return getMockCategories();
+    } else if (sqlQuery.includes('FROM Venues')) {
+        return getMockVenues();
+    } else if (sqlQuery.includes('FROM Users') && sqlQuery.includes('RoleId = 2')) {
+        return getMockManagers();
+    } else if (sqlQuery.includes('FROM Users') && sqlQuery.includes('RoleName')) {
+        return getMockUsers();
     }
     
-    try {
-        const result = await pool.request().query(sqlQuery);
-        return result.recordset;
-    } catch (err) {
-        console.error('Query error, using mock data:', err.message);
-        return getMockData();
-    }
+    return getMockData();
 }
 
 function getMockData() {
-    // Возвращаем реалистичные тестовые данные
     return [
         {
             EventId: 1,
-            EventName: "Веб-приложение для управления мероприятиями",
-            Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
-            DateTimeStart: new Date('2024-12-01T10:00:00'),
-            DateTimeFinish: new Date('2024-12-01T12:00:00'),
-            CategoryName: "Презентация",
-            VenueName: "Онлайн",
-            UserName: "Кремлакова Л.А.",
-            Status: "Согласован",
-            EstimatedBudget: 0,
-            ActualBudget: 0,
-            MaxNumOfGuests: 1,
-            ClientsDisplay: "Курсовая работа"
-        },
-        {
-            EventId: 2,
             EventName: "Техническая конференция 2024",
             Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
             DateTimeStart: new Date('2024-12-10T09:00:00'),
@@ -80,31 +67,45 @@ function getMockData() {
             CategoryName: "Конференция",
             VenueName: "Конференц-зал А",
             UserName: "Иванов Иван",
-            Status: "В обработке",
+            Status: "Согласован",
             EstimatedBudget: 150000,
             ActualBudget: 145000,
             MaxNumOfGuests: 200,
-            ClientsDisplay: "Петров А., Сидорова М."
+            ClientsDisplay: "Петров А., Сидорова М., ООО 'ТехноПро'"
         },
         {
-            EventId: 3,
+            EventId: 2,
             EventName: "Корпоративный тренинг",
-            Description: "Тренинг по командообразованию и эффективной коммуникации",
+            Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
             DateTimeStart: new Date('2024-12-15T09:00:00'),
             DateTimeFinish: new Date('2024-12-15T17:00:00'),
             CategoryName: "Тренинг", 
             VenueName: "Переговорная Б",
             UserName: "Петрова Анна",
-            Status: "Ждет утверждения",
+            Status: "В обработке",
             EstimatedBudget: 50000,
             ActualBudget: 0,
             MaxNumOfGuests: 25,
             ClientsDisplay: "ООО 'ТехноПро'"
+        },
+        {
+            EventId: 3,
+            EventName: "Веб-приложение для управления мероприятиями",
+            Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
+            DateTimeStart: new Date('2024-12-01T10:00:00'),
+            DateTimeFinish: new Date('2024-12-01T12:00:00'),
+            CategoryName: "Презентация",
+            VenueName: "Онлайн",
+            UserName: "Кремлакова Любовь",
+            Status: "Согласован",
+            EstimatedBudget: 0,
+            ActualBudget: 0,
+            MaxNumOfGuests: 1,
+            ClientsDisplay: "Курсовая работа"
         }
     ];
 }
 
-// Мок данные для категорий
 function getMockCategories() {
     return [
         { CategoryId: 1, CategoryName: "Конференция" },
@@ -115,7 +116,6 @@ function getMockCategories() {
     ];
 }
 
-// Мок данные для мест проведения
 function getMockVenues() {
     return [
         { VenueId: 1, VenueName: "Конференц-зал А", Address: "ул. Главная, 1", Capacity: 200, Description: "Основной конференц-зал" },
@@ -125,19 +125,58 @@ function getMockVenues() {
     ];
 }
 
-// Мок данные для пользователей
 function getMockUsers() {
     return [
-        { UserId: 1, LastName: "Иванов", Name: "Иван", MiddleName: "Иванович", Phone: "+79990001111", Specialty: "Старший менеджер", Login: "ivanov", Password: "123", RoleId: 2, RoleName: "Менеджер" },
-        { UserId: 2, LastName: "Петрова", Name: "Анна", MiddleName: "Сергеевна", Phone: "+79990002222", Specialty: "Менеджер мероприятий", Login: "petrova", Password: "123", RoleId: 2, RoleName: "Менеджер" },
-        { UserId: 3, LastName: "Кремлакова", Name: "Любовь", MiddleName: "Александровна", Phone: "+79990003333", Specialty: "Разработчик", Login: "kremlakova", Password: "123", RoleId: 2, RoleName: "Менеджер" }
+        { 
+            UserId: 1, 
+            LastName: "Демо", 
+            Name: "Пользователь", 
+            MiddleName: "Тестовый", 
+            Phone: "+7 (999) 000-00-00", 
+            Specialty: "Менеджер мероприятий", 
+            Login: "demo", 
+            Password: "demo", 
+            RoleId: 2, 
+            RoleName: "Менеджер" 
+        },
+        { 
+            UserId: 2, 
+            LastName: "Иванов", 
+            Name: "Иван", 
+            MiddleName: "Иванович", 
+            Phone: "+7 (999) 111-11-11", 
+            Specialty: "Старший менеджер", 
+            Login: "ivanov", 
+            Password: "123", 
+            RoleId: 2, 
+            RoleName: "Менеджер" 
+        },
+        { 
+            UserId: 3, 
+            LastName: "Петрова", 
+            Name: "Анна", 
+            MiddleName: "Сергеевна", 
+            Phone: "+7 (999) 222-22-22", 
+            Specialty: "Менеджер мероприятий", 
+            Login: "petrova", 
+            Password: "123", 
+            RoleId: 2, 
+            RoleName: "Менеджер" 
+        }
     ];
+}
+
+function getMockManagers() {
+    return getMockUsers().map(user => ({
+        UserId: user.UserId,
+        DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName}`,
+        Specialty: user.Specialty
+    }));
 }
 
 module.exports = { 
     connectDB, 
-    query, 
-    sql,
+    query,
     getMockCategories,
     getMockVenues,
     getMockUsers
