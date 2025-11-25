@@ -187,3 +187,37 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// Получение всех пользователей (для админов)
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await query(`
+            SELECT u.*, r.RoleName 
+            FROM Users u 
+            INNER JOIN Role r ON u.RoleId = r.RoleId
+        `);
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Получение категорий
+app.get('/api/categories', async (req, res) => {
+    try {
+        const categories = await query('SELECT * FROM EventCategories');
+        res.json(categories);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Получение мест проведения
+app.get('/api/venues', async (req, res) => {
+    try {
+        const venues = await query('SELECT * FROM Venues');
+        res.json(venues);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});

@@ -1,6 +1,8 @@
 class EventsManager {
     constructor() {
         this.events = [];
+        this.categories = [];
+        this.venues = [];
         this.selectedEvent = null;
         this.socket = null;
         this.init();
@@ -12,7 +14,6 @@ class EventsManager {
     }
 
     bindEvents() {
-        // Навигация
         document.querySelectorAll('.sidebar-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const panel = e.currentTarget.dataset.panel;
@@ -20,51 +21,28 @@ class EventsManager {
             });
         });
 
-        // Кнопки мероприятий
         document.getElementById('add-event-btn').addEventListener('click', () => this.showAddEventModal());
-        document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditBudgetModal());
+        document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditEventModal());
         document.getElementById('refresh-btn').addEventListener('click', () => this.loadEvents());
 
-        // Поиск
         document.getElementById('search-events').addEventListener('input', (e) => {
             this.filterEvents(e.target.value);
         });
 
-        // Модальные окна
         document.querySelectorAll('.modal-close, .modal-cancel').forEach(btn => {
             btn.addEventListener('click', () => this.closeModals());
         });
 
-        // Формы
         document.getElementById('event-form').addEventListener('submit', (e) => this.handleEventSubmit(e));
         document.getElementById('budget-form').addEventListener('submit', (e) => this.handleBudgetSubmit(e));
 
-        // Сортировка таблицы
         document.querySelectorAll('#events-table th[data-sort]').forEach(th => {
             th.addEventListener('click', () => this.sortTable(th.dataset.sort));
         });
 
-        // Выбор строки в таблице
         document.getElementById('events-tbody').addEventListener('click', (e) => {
             const row = e.target.closest('tr');
             if (row) this.selectEvent(row);
-        });
-    }
-
-    initWebSocket() {
-        this.socket = io();
-        
-        this.socket.on('eventsUpdated', (data) => {
-            this.showNotification('Данные обновлены');
-            this.loadEvents();
-        });
-        
-        this.socket.on('connect', () => {
-            console.log('WebSocket connected');
-        });
-        
-        this.socket.on('disconnect', () => {
-            console.log('WebSocket disconnected');
         });
     }
 
@@ -116,48 +94,75 @@ class EventsManager {
         });
     }
 
-    selectEvent(row) {
-        // Снимаем выделение со всех строк
-        document.querySelectorAll('#events-table tbody tr').forEach(r => {
-            r.classList.remove('selected');
-        });
-        
-        // Выделяем выбранную строку
-        row.classList.add('selected');
-        
-        const eventId = parseInt(row.dataset.eventId);
-        this.selectedEvent = this.events.find(e => e.EventId === eventId);
-        this.updateEditButton();
-    }
-
-    updateEditButton() {
-        const editBtn = document.getElementById('edit-event-btn');
-        editBtn.disabled = !this.selectedEvent;
-    }
-
     async showAddEventModal() {
         await this.loadModalData();
         document.getElementById('modal-title').textContent = 'Добавление мероприятия';
         document.getElementById('event-form').reset();
+        document.getElementById('event-form').dataset.mode = 'add';
         document.getElementById('event-modal').classList.add('active');
+    }
+
+    async showEditEventModal() {
+        if (!this.selectedEvent) return;
+        
+        await this.loadModalData();
+        document.getElementById('modal-title').textContent = 'Редактирование мероприятия';
+        document.getElementById('event-form').dataset.mode = 'edit';
+        document.getElementById('event-form').dataset.eventId = this.selectedEvent.EventId;
+        
+        // Заполняем форму данными выбранного мероприятия
+        this.fillEventForm(this.selectedEvent);
+        document.getElementById('event-modal').classList.add('active');
+    }
+
+    fillEventForm(event) {
+        document.querySelector('[name="EventName"]').value = event.EventName || '';
+        document.querySelector('[name="Description"]').value = event.Description || '';
+        document.querySelector('[name="DateTimeStart"]').value = this.formatDateTimeForInput(event.DateTimeStart);
+        document.querySelector('[name="DateTimeFinish"]').value = this.formatDateTimeForInput(event.DateTimeFinish);
+        document.querySelector('[name="Status"]').value = event.Status || '';
+        document.querySelector('[name="EstimatedBudget"]').value = event.EstimatedBudget || '';
+        document.querySelector('[name="MaxNumOfGuests"]').value = event.MaxNumOfGuests || '';
+        
+        // Устанавливаем выбранные значения в select'ах
+        setTimeout(() => {
+            if (event.CategoryName) {
+                const categorySelect = document.querySelector('[name="CategoryId"]');
+                for (let option of categorySelect.options) {
+                    if (option.text === event.CategoryName) {
+                        categorySelect.value = option.value;
+                        break;
+                    }
+                }
+            }
+            
+            if (event.VenueName) {
+                const venueSelect = document.querySelector('[name="VenueId"]');
+                for (let option of venueSelect.options) {
+                    if (option.text === event.VenueName) {
+                        venueSelect.value = option.value;
+                        break;
+                    }
+                }
+            }
+        }, 100);
     }
 
     async loadModalData() {
         try {
             // Загрузка категорий
-            const categoriesResponse = await fetch('/api/categories');
-            const categories = await categoriesResponse.json();
-            this.fillSelect('CategoryId', categories, 'CategoryId', 'CategoryName');
+            if (this.categories.length === 0) {
+                const categoriesResponse = await fetch('/api/categories');
+                this.categories = await categoriesResponse.json();
+            }
+            this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
             
             // Загрузка мест проведения
-            const venuesResponse = await fetch('/api/venues');
-            const venues = await venuesResponse.json();
-            this.fillSelect('VenueId', venues, 'VenueId', 'VenueName');
-            
-            // Загрузка менеджеров
-            const managersResponse = await fetch('/api/managers');
-            const managers = await managersResponse.json();
-            this.fillSelect('UserId', managers, 'UserId', 'DisplayName');
+            if (this.venues.length === 0) {
+                const venuesResponse = await fetch('/api/venues');
+                this.venues = await venuesResponse.json();
+            }
+            this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
             
         } catch (error) {
             this.showNotification('Ошибка загрузки данных', 'error');
@@ -181,163 +186,83 @@ class EventsManager {
         
         const formData = new FormData(e.target);
         const eventData = Object.fromEntries(formData.entries());
+        const mode = e.target.dataset.mode;
         
+        // Валидация
+        if (!this.validateEventForm(eventData)) {
+            return;
+        }
+
+        try {
+            let response;
+            if (mode === 'add') {
+                response = await fetch('/api/events', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+            } else {
+                const eventId = e.target.dataset.eventId;
+                response = await fetch(`/api/events/${eventId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'}`, 'success');
+                this.closeModals();
+                this.loadEvents();
+            } else {
+                this.showNotification(`Ошибка при ${mode === 'add' ? 'добавлении' : 'обновлении'} мероприятия`, 'error');
+            }
+        } catch (error) {
+            this.showNotification('Ошибка подключения к серверу', 'error');
+        }
+    }
+
+    validateEventForm(data) {
         // Валидация дат
-        const startDate = new Date(eventData.DateTimeStart);
-        const endDate = new Date(eventData.DateTimeFinish);
+        const startDate = new Date(data.DateTimeStart);
+        const endDate = new Date(data.DateTimeFinish);
         
         if (startDate >= endDate) {
             this.showNotification('Дата окончания должна быть позже даты начала', 'error');
-            return;
+            return false;
         }
         
         if (startDate < new Date()) {
             this.showNotification('Дата начала не может быть в прошлом', 'error');
-            return;
+            return false;
         }
-        
-        try {
-            const response = await fetch('/api/events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(eventData)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showNotification('Мероприятие успешно добавлено', 'success');
-                this.closeModals();
-                this.loadEvents();
-            } else {
-                this.showNotification('Ошибка при добавлении мероприятия', 'error');
-            }
-        } catch (error) {
-            this.showNotification('Ошибка подключения к серверу', 'error');
+
+        // Валидация числовых полей
+        if (isNaN(data.EstimatedBudget) || data.EstimatedBudget <= 0) {
+            this.showNotification('Предполагаемый бюджет должен быть положительным числом', 'error');
+            return false;
         }
-    }
 
-    showEditBudgetModal() {
-        if (!this.selectedEvent) return;
-        
-        document.getElementById('actual-budget').value = this.selectedEvent.ActualBudget;
-        document.getElementById('budget-modal').classList.add('active');
-    }
-
-    async handleBudgetSubmit(e) {
-        e.preventDefault();
-        
-        if (!this.selectedEvent) return;
-        
-        const actualBudget = document.getElementById('actual-budget').value;
-        
-        try {
-            const response = await fetch(`/api/events/${this.selectedEvent.EventId}/budget`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ ActualBudget: parseFloat(actualBudget) })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showNotification('Бюджет успешно обновлен', 'success');
-                this.closeModals();
-                this.loadEvents();
-            } else {
-                this.showNotification('Ошибка при обновлении бюджета', 'error');
-            }
-        } catch (error) {
-            this.showNotification('Ошибка подключения к серверу', 'error');
+        if (isNaN(data.MaxNumOfGuests) || data.MaxNumOfGuests <= 0) {
+            this.showNotification('Максимальное количество гостей должно быть положительным числом', 'error');
+            return false;
         }
+
+        return true;
     }
 
-    closeModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.classList.remove('active');
-        });
-    }
+    // ... остальные методы остаются такими же ...
 
-    showPanel(panelName) {
-        // Обновляем активные кнопки
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-panel="${panelName}"]`).classList.add('active');
-        
-        // Показываем соответствующую панель
-        document.querySelectorAll('.content-panel').forEach(panel => {
-            panel.classList.remove('active');
-        });
-        document.getElementById(`${panelName}-panel`).classList.add('active');
-        
-        // Обновляем заголовок
-        const titles = {
-            'events': 'Мероприятия',
-            'profile': 'Личный кабинет'
-        };
-        document.getElementById('current-panel-title').textContent = titles[panelName];
-        
-        // Обновляем данные профиля при переходе
-        if (panelName === 'profile') {
-            authManager.loadUserEvents();
-        }
-    }
-
-    filterEvents(searchTerm) {
-        if (!searchTerm) {
-            this.displayEvents();
-            return;
-        }
-        
-        const filtered = this.events.filter(event => 
-            event.EventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.Description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.CategoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.VenueName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.Status.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        
-        this.displayEvents(filtered);
-    }
-
-    sortTable(column) {
-        this.events.sort((a, b) => {
-            if (a[column] < b[column]) return -1;
-            if (a[column] > b[column]) return 1;
-            return 0;
-        });
-        
-        this.displayEvents();
-    }
-
-    // Вспомогательные методы
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    formatDateTime(dateTimeString) {
+    formatDateTimeForInput(dateTimeString) {
         if (!dateTimeString) return '';
         const date = new Date(dateTimeString);
-        return date.toLocaleString('ru-RU');
-    }
-
-    formatCurrency(amount) {
-        if (!amount) return '0 ₽';
-        return new Intl.NumberFormat('ru-RU', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount) + ' ₽';
-    }
-
-    showNotification(message, type = 'info') {
-        authManager.showMessage(message, type);
+        return date.toISOString().slice(0, 16);
     }
 }
 

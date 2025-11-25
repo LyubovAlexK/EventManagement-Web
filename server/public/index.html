@@ -77,12 +77,10 @@
                     <h1 id="current-panel-title">Мероприятия</h1>
                     <div class="header-actions">
                         <button id="add-event-btn" class="btn-primary">
-                            <img src="img/plus.png" alt="Добавить">
                             <span>Добавить мероприятие</span>
                         </button>
                         <button id="edit-event-btn" class="btn-primary" disabled>
-                            <img src="img/editl.png" alt="Редактировать">
-                            <span>Редактировать бюджет</span>
+                            <span>Редактировать</span>
                         </button>
                     </div>
                 </header>
@@ -168,8 +166,8 @@
                             <label>Статус *</label>
                             <select name="Status" required>
                                 <option value="">Выберите статус</option>
-                                <option value="Согласован">Согласован</option>
                                 <option value="В обработке">В обработке</option>
+                                <option value="Согласован">Согласован</option>
                                 <option value="Ждет утверждения">Ждет утверждения</option>
                             </select>
                         </div>
@@ -194,11 +192,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Предполагаемый бюджет *</label>
-                            <input type="number" name="EstimatedBudget" step="0.01" required>
+                            <input type="number" name="EstimatedBudget" step="0.01" min="0" required>
                         </div>
                         <div class="form-group">
                             <label>Максимальное количество гостей *</label>
-                            <input type="number" name="MaxNumOfGuests" required>
+                            <input type="number" name="MaxNumOfGuests" min="1" required>
                         </div>
                     </div>
 
@@ -217,16 +215,9 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Ответственный менеджер *</label>
-                        <select name="UserId" required>
-                            <option value="">Выберите менеджера</option>
-                        </select>
-                    </div>
-
                     <div class="form-actions">
                         <button type="button" class="btn-secondary modal-cancel">Отмена</button>
-                        <button type="submit" class="btn-primary">Добавить</button>
+                        <button type="submit" class="btn-primary">Сохранить</button>
                     </div>
                 </form>
             </div>

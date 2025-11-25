@@ -13,7 +13,6 @@ class AuthManager {
         document.getElementById('login-btn').addEventListener('click', () => this.login());
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
         
-        // Enter key support
         document.getElementById('password').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.login();
         });
@@ -40,6 +39,12 @@ class AuthManager {
             const result = await response.json();
 
             if (result.success) {
+                // Проверка роли - ограничение доступа
+                if (result.user.RoleName === 'Администратор' || result.user.RoleName === 'Организатор') {
+                    this.showMessage('Доступ ограничен!', 'error');
+                    return;
+                }
+
                 this.currentUser = result.user;
                 this.showApp();
                 this.showMessage('Успешный вход!', 'success');
@@ -58,10 +63,16 @@ class AuthManager {
     }
 
     checkAuthStatus() {
-        // Проверка сохраненной сессии
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
+            const user = JSON.parse(savedUser);
+            // Проверка роли при восстановлении сессии
+            if (user.RoleName === 'Администратор' || user.RoleName === 'Организатор') {
+                localStorage.removeItem('currentUser');
+                this.showMessage('Доступ ограничен!', 'error');
+                return;
+            }
+            this.currentUser = user;
             this.showApp();
         }
     }
@@ -77,27 +88,54 @@ class AuthManager {
         document.getElementById('app-page').classList.add('active');
         localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
         
-        this.updateUserProfile();
+        this.updateUI();
         eventsManager.loadEvents();
+    }
+
+    updateUI() {
+        this.updateUserProfile();
+        this.updateButtonText();
+        this.checkUserRole();
     }
 
     updateUserProfile() {
         if (!this.currentUser) return;
 
-        document.getElementById('user-fullname').textContent = 
-            `${this.currentUser.LastName} ${this.currentUser.Name} ${this.currentUser.MiddleName}`;
-        document.getElementById('user-specialty').textContent = this.currentUser.Specialty;
-        document.getElementById('user-phone').textContent = this.currentUser.Phone;
+        const fullName = `${this.currentUser.LastName} ${this.currentUser.Name} ${this.currentUser.MiddleName || ''}`.trim();
+        document.getElementById('user-fullname').textContent = fullName;
+        document.getElementById('user-specialty').textContent = this.currentUser.Specialty || 'Менеджер';
+        document.getElementById('user-phone').textContent = this.currentUser.Phone || 'Не указан';
         
-        // Загрузка мероприятий пользователя
         this.loadUserEvents();
+    }
+
+    updateButtonText() {
+        // Обновляем текст кнопок
+        const addBtn = document.getElementById('add-event-btn');
+        const editBtn = document.getElementById('edit-event-btn');
+        
+        if (addBtn) {
+            addBtn.innerHTML = '<span>Добавить мероприятие</span>';
+        }
+        
+        if (editBtn) {
+            editBtn.innerHTML = '<span>Редактировать</span>';
+        }
+    }
+
+    checkUserRole() {
+        // Скрываем/показываем элементы в зависимости от роли
+        const isManager = this.currentUser && this.currentUser.RoleName === 'Менеджер';
+        
+        // Можно добавить дополнительную логику для разных ролей
     }
 
     async loadUserEvents() {
         try {
             const events = await eventsManager.fetchEvents();
             const userEvents = events.filter(event => 
-                event.UserName.includes(this.currentUser.LastName)
+                event.UserName.includes(this.currentUser.LastName) || 
+                event.UserName.includes(this.currentUser.Name)
             );
             
             document.getElementById('user-events-count').textContent = userEvents.length;
@@ -107,7 +145,7 @@ class AuthManager {
             
             userEvents.forEach(event => {
                 const li = document.createElement('li');
-                li.textContent = event.EventName;
+                li.textContent = `${event.EventName} (${event.Status})`;
                 eventsList.appendChild(li);
             });
         } catch (error) {
@@ -116,7 +154,6 @@ class AuthManager {
     }
 
     showMessage(message, type = 'info') {
-        // Создание уведомления
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;

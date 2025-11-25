@@ -542,3 +542,117 @@ body {
         margin: 20px;
     }
 }
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .app-layout {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 10px;
+    }
+    
+    .sidebar-nav {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .sidebar-btn {
+        border-radius: 20px;
+        justify-content: center;
+        margin-bottom: 0;
+    }
+    
+    .content-header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .panel-toolbar {
+        flex-direction: column;
+        gap: 15px;
+        padding: 0 10px;
+    }
+    
+    .search-container {
+        width: 100%;
+    }
+    
+    .search-input {
+        width: 100%;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        min-width: 800px;
+        font-size: 14px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 8px 6px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .auth-container {
+        padding: 20px;
+    }
+    
+    .auth-form {
+        margin: 0 auto 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 30px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar-nav {
+        flex-direction: column;
+    }
+    
+    .content-header h1 {
+        font-size: 20px;
+    }
+    
+    .auth-title h2 {
+        font-size: 20px;
+    }
+    
+    .app-title {
+        font-size: 28px;
+    }
+    
+    .form-input,
+    .search-input {
+        font-size: 16px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+}
