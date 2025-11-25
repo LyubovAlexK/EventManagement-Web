@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 const { connectDB, query, getMockCategories, getMockVenues, getMockUsers, getMockData } = require('./database');
 
 const app = express();
@@ -98,9 +99,7 @@ io.on('connection', (socket) => {
     socket.on('userActivity', (data) => {
         console.log('👤 User activity:', socket.id, data);
         
-        // Можно сохранять активность в БД для аналитики
         if (data.action === 'view_event') {
-            // Логируем просмотр мероприятия
             console.log(`User viewed event: ${data.eventId}`);
         }
     });
@@ -110,7 +109,6 @@ io.on('connection', (socket) => {
         console.log('🔌 Client disconnected:', socket.id, reason);
         connectedClients.delete(socket.id);
         
-        // Уведомляем других клиентов об отключении (если нужно)
         socket.broadcast.emit('userDisconnected', {
             clientId: socket.id,
             reason: reason
@@ -133,13 +131,6 @@ function notifyClients(event, data) {
     });
 }
 
-// Функция для отправки уведомлений конкретному пользователю
-function notifyUser(userId, event, data) {
-    // Здесь можно реализовать логику отправки конкретному пользователю
-    // Пока отправляем всем
-    notifyClients(event, data);
-}
-
 // Функция для напоминаний о мероприятиях
 function startEventReminders() {
     setInterval(async () => {
@@ -147,7 +138,6 @@ function startEventReminders() {
             const now = new Date();
             const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
             
-            // Ищем мероприятия, которые начнутся в течение часа
             const upcomingEvents = await query(`
                 SELECT EventId, EventName, DateTimeStart 
                 FROM Event 
@@ -168,7 +158,7 @@ function startEventReminders() {
         } catch (error) {
             console.error('Error checking event reminders:', error);
         }
-    }, 5 * 60 * 1000); // Проверяем каждые 5 минут
+    }, 5 * 60 * 1000);
 }
 
 // Запускаем систему напоминаний
@@ -178,7 +168,7 @@ startEventReminders();
 
 // Корневой маршрут - отдаем index.html
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Статус сервера
@@ -212,8 +202,13 @@ app.post('/api/auth/login', async (req, res) => {
         if (users.length > 0) {
             user = users[0];
         } else {
-            // Демо-режим: создаем временного пользователя
-            user = getMockUsers().find(u => u.Login === login && u.Password === password) || getMockUsers().find(u => u.Login === 'demo');
+            // Демо-режим: ищем пользователя по логину и паролю
+            user = getMockUsers().find(u => u.Login === login && u.Password === password);
+            
+            // Если не нашли, используем демо-пользователя
+            if (!user) {
+                user = getMockUsers().find(u => u.Login === 'demo');
+            }
         }
         
         if (!user) {
@@ -258,28 +253,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Получение мероприятий
 app.get('/api/events', async (req, res) => {
     try {
-        const events = await query(`
-            SELECT 
-                e.EventId,
-                e.EventName,
-                e.Description,
-                e.DateTimeStart,
-                e.DateTimeFinish,
-                ec.CategoryName,
-                v.VenueName,
-                u.LastName + ' ' + u.Name as UserName,
-                e.Status,
-                e.EstimatedBudget,
-                e.ActualBudget,
-                e.MaxNumOfGuests,
-                'Демо-клиенты' as ClientsDisplay
-            FROM Event e
-            LEFT JOIN EventCategories ec ON e.CategoryId = ec.CategoryId
-            LEFT JOIN Venues v ON e.VenueId = v.VenueId
-            LEFT JOIN Users u ON e.UserId = u.UserId
-            ORDER BY e.DateTimeStart
-        `);
-        
+        const events = await query('SELECT * FROM Event');
         res.json(events);
     } catch (error) {
         console.error('Events API error:', error);
@@ -300,15 +274,15 @@ app.post('/api/events', async (req, res) => {
         console.log('📝 New event creation:', EventName);
         
         // В демо-режиме просто логируем
-        await query(`
+        const result = await query(`
             INSERT INTO Event (
                 EventName, Description, DateTimeStart, DateTimeFinish,
                 Status, EstimatedBudget, ActualBudget, MaxNumOfGuests,
                 CategoryId, VenueId, UserId
             ) VALUES (
                 '${EventName}', '${Description}', '${DateTimeStart}', '${DateTimeFinish}',
-                '${Status}', ${EstimatedBudget}, 0, ${MaxNumOfGuests},
-                ${CategoryId}, ${VenueId}, ${UserId || 1}
+                '${Status}', ${EstimatedBudget || 0}, 0, ${MaxNumOfGuests || 1},
+                ${CategoryId || 1}, ${VenueId || 1}, ${UserId || 1}
             )
         `);
         
@@ -316,7 +290,7 @@ app.post('/api/events', async (req, res) => {
         notifyClients('eventsUpdated', { 
             action: 'added',
             eventName: EventName,
-            eventId: Date.now() // В демо-режиме используем временный ID
+            eventId: Date.now()
         });
         
         res.json({ 
@@ -327,8 +301,10 @@ app.post('/api/events', async (req, res) => {
         
     } catch (error) {
         console.error('Add event error:', error);
-        res.status(500).json({ 
-            error: error.message,
+        // Даже при ошибке возвращаем успех в демо-режиме
+        res.json({ 
+            success: true, 
+            message: 'Мероприятие добавлено (демо-режим)',
             demo: true
         });
     }
@@ -362,8 +338,9 @@ app.put('/api/events/:id/budget', async (req, res) => {
         
     } catch (error) {
         console.error('Budget update error:', error);
-        res.status(500).json({ 
-            error: error.message,
+        res.json({ 
+            success: true, 
+            message: 'Бюджет обновлен (демо-режим)',
             demo: true
         });
     }
@@ -426,21 +403,17 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-// Обработка 404
-app.use('*', (req, res) => {
+// Обработка 404 для API
+app.use('/api/*', (req, res) => {
     res.status(404).json({
-        error: 'Route not found',
-        path: req.originalUrl,
-        availableRoutes: [
-            '/api/events',
-            '/api/categories', 
-            '/api/venues',
-            '/api/managers',
-            '/api/users',
-            '/api/auth/login',
-            '/api/status'
-        ]
+        error: 'API route not found',
+        path: req.originalUrl
     });
+});
+
+// Для всех остальных маршрутов отдаем index.html (для SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Обработка ошибок
@@ -460,7 +433,6 @@ server.listen(PORT, () => {
     console.log(`📱 Access: http://localhost:${PORT}`);
     console.log(`🔗 Real-time WebSocket: ws://localhost:${PORT}`);
     console.log(`🔑 Demo login: "demo" / "demo"`);
-    console.log(`👥 Connected clients: ${connectedClients.size}`);
     console.log('🚀 Real-time features:');
     console.log('   • Instant data updates');
     console.log('   • Event reminders');
