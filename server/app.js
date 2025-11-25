@@ -221,3 +221,59 @@ app.get('/api/venues', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+// Получение категорий
+app.get('/api/categories', async (req, res) => {
+    try {
+        const categories = await query('SELECT * FROM EventCategories');
+        res.json(categories);
+    } catch (error) {
+        // Если ошибка, возвращаем мок данные
+        res.json(getMockCategories());
+    }
+});
+
+// Получение мест проведения
+app.get('/api/venues', async (req, res) => {
+    try {
+        const venues = await query('SELECT * FROM Venues');
+        res.json(venues);
+    } catch (error) {
+        // Если ошибка, возвращаем мок данные
+        res.json(getMockVenues());
+    }
+});
+
+// Получение пользователей
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await query(`
+            SELECT u.*, r.RoleName 
+            FROM Users u 
+            INNER JOIN Role r ON u.RoleId = r.RoleId
+        `);
+        res.json(users);
+    } catch (error) {
+        // Если ошибка, возвращаем мок данные
+        res.json(getMockUsers());
+    }
+});
+
+// Получение менеджеров
+app.get('/api/managers', async (req, res) => {
+    try {
+        const managers = await query(`
+            SELECT UserId, LastName + ' ' + Name + ' ' + ISNULL(MiddleName, '') as DisplayName, Specialty
+            FROM Users WHERE RoleId = 2
+        `);
+        res.json(managers);
+    } catch (error) {
+        // Если ошибка, возвращаем мок данные менеджеров
+        const mockUsers = getMockUsers();
+        const managers = mockUsers.map(user => ({
+            UserId: user.UserId,
+            DisplayName: `${user.LastName} ${user.Name} ${user.MiddleName || ''}`.trim(),
+            Specialty: user.Specialty
+        }));
+        res.json(managers);
+    }
+});
