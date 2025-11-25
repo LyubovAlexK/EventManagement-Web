@@ -11,6 +11,7 @@ function initApp() {
     initWebSocket();
     initGlobalHandlers();
     checkConnectionStatus();
+    showWelcomeNotifications();
 }
 
 // Инициализация WebSocket соединения
@@ -21,22 +22,25 @@ function initWebSocket() {
         socket.on('connect', () => {
             console.log('✅ Connected to server');
             updateConnectionStatus(true);
+            showRealtimeNotification('✅ Подключение к серверу установлено');
         });
         
         socket.on('disconnect', () => {
             console.log('❌ Disconnected from server');
             updateConnectionStatus(false);
+            showRealtimeNotification('❌ Потеряно соединение с сервером');
         });
         
         socket.on('connect_error', (error) => {
             console.log('❌ Connection error:', error);
             updateConnectionStatus(false);
+            showRealtimeNotification('❌ Ошибка подключения к серверу');
         });
         
         // Реальное время - обновление данных
         socket.on('eventsUpdated', (data) => {
             console.log('🔄 Real-time events update:', data);
-            showRealtimeNotification('Данные мероприятий обновлены!');
+            showRealtimeNotification('📊 Данные мероприятий обновлены!');
             
             // Автоматически обновляем список мероприятий
             if (window.eventsManager) {
@@ -46,7 +50,7 @@ function initWebSocket() {
         
         socket.on('dataChanged', (data) => {
             console.log('📊 Data changed:', data);
-            showRealtimeNotification(`Изменения в ${data.table}: ${data.action}`);
+            showRealtimeNotification(`🔄 Изменения в ${data.table}: ${data.action}`);
         });
         
         // Уведомления о приближающихся мероприятиях
@@ -57,27 +61,99 @@ function initWebSocket() {
         
     } catch (error) {
         console.error('WebSocket initialization error:', error);
+        showRealtimeNotification('⚠️ Режим офлайн: демо-данные');
     }
+}
+
+// Показ приветственных уведомлений при загрузке
+function showWelcomeNotifications() {
+    setTimeout(() => {
+        showEventReminder({
+            eventId: 6,
+            eventName: "Презентация нового продукта",
+            startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Завтра
+            daysLeft: 1,
+            message: "Презентация нового продукта начинается ЗАВТРА!"
+        });
+    }, 2000);
+    
+    setTimeout(() => {
+        showEventReminder({
+            eventId: 5,
+            eventName: "Стратегическое планирование на 2025 год",
+            startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
+            daysLeft: 3,
+            message: "Стратегическое планирование на 2025 год через 3 дня!"
+        });
+    }, 5000);
 }
 
 // Показ уведомлений реального времени
 function showRealtimeNotification(message) {
+    // Создаем контейнер для уведомлений если его нет
+    let notificationsContainer = document.getElementById('notifications-container');
+    if (!notificationsContainer) {
+        notificationsContainer = document.createElement('div');
+        notificationsContainer.id = 'notifications-container';
+        notificationsContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        `;
+        document.body.appendChild(notificationsContainer);
+    }
+    
     const notification = document.createElement('div');
     notification.className = 'realtime-notification';
     notification.innerHTML = `
         <div class="notification-content">
-            <span class="notification-icon">🔄</span>
             <span class="notification-text">${message}</span>
-            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="notification-close">×</button>
         </div>
     `;
     
-    document.body.appendChild(notification);
+    notification.style.cssText = `
+        background: #10B981;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        animation: slideInRight 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    `;
+    
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 10px;
+    `;
+    
+    closeBtn.addEventListener('click', () => {
+        notification.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+    });
+    
+    notificationsContainer.appendChild(notification);
     
     // Автоматическое скрытие через 5 секунд
     setTimeout(() => {
         if (notification.parentElement) {
-            notification.style.animation = 'slideOut 0.3s ease-in';
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
             setTimeout(() => notification.remove(), 300);
         }
     }, 5000);
@@ -85,6 +161,23 @@ function showRealtimeNotification(message) {
 
 // Уведомление о напоминании мероприятия
 function showEventReminder(eventData) {
+    let remindersContainer = document.getElementById('reminders-container');
+    if (!remindersContainer) {
+        remindersContainer = document.createElement('div');
+        remindersContainer.id = 'reminders-container';
+        remindersContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        `;
+        document.body.appendChild(remindersContainer);
+    }
+    
     const reminder = document.createElement('div');
     reminder.className = 'event-reminder';
     
@@ -107,68 +200,108 @@ function showEventReminder(eventData) {
             <span class="reminder-icon">${icon}</span>
             <div class="reminder-text">
                 <strong>${eventData.message}</strong>
-                <div>${eventData.eventName}</div>
+                <div style="margin: 5px 0; font-size: 13px;">${eventData.eventName}</div>
                 <small>Начинается: ${new Date(eventData.startTime).toLocaleString('ru-RU')}</small>
             </div>
-            <button class="reminder-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="reminder-close">×</button>
         </div>
     `;
     
     reminder.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
         background: ${bgColor};
         color: white;
         padding: 15px;
         border-radius: 8px;
         font-family: 'JetBrains Mono', monospace;
         font-size: 14px;
-        z-index: 10000;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        animation: slideIn 0.3s ease-out;
+        animation: slideInLeft 0.3s ease-out;
         max-width: 350px;
     `;
     
-    document.body.appendChild(reminder);
+    const closeBtn = reminder.querySelector('.reminder-close');
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 10px;
+    `;
     
+    closeBtn.addEventListener('click', () => {
+        reminder.style.animation = 'slideOutLeft 0.3s ease-in';
+        setTimeout(() => reminder.remove(), 300);
+    });
+    
+    remindersContainer.appendChild(reminder);
+    
+    // Автоматическое скрытие через 10 секунд
     setTimeout(() => {
         if (reminder.parentElement) {
-            reminder.style.animation = 'slideOut 0.3s ease-in';
+            reminder.style.animation = 'slideOutLeft 0.3s ease-in';
             setTimeout(() => reminder.remove(), 300);
         }
     }, 10000);
+}
+
+// Функция для тестирования уведомлений
+function testNotifications() {
+    // Тестовые уведомления
+    showEventReminder({
+        eventId: 1,
+        eventName: "Техническая конференция 2024",
+        startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        daysLeft: 1,
+        message: "Техническая конференция 2024 начинается ЗАВТРА!"
+    });
+    
+    setTimeout(() => {
+        showEventReminder({
+            eventId: 2,
+            eventName: "Корпоративный тренинг",
+            startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+            daysLeft: 2,
+            message: "Корпоративный тренинг через 2 дня!"
+        });
+    }, 1000);
+    
+    setTimeout(() => {
+        showEventReminder({
+            eventId: 3,
+            eventName: "Стратегическое планирование",
+            startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+            daysLeft: 3,
+            message: "Стратегическое планирование через 3 дня!"
+        });
+    }, 2000);
 }
 
 // Обновление статуса подключения
 function updateConnectionStatus(connected) {
     const statusElement = document.getElementById('connection-status');
     if (!statusElement) {
-        // Создаем элемент статуса если его нет
         const statusDiv = document.createElement('div');
         statusDiv.id = 'connection-status';
         statusDiv.style.cssText = `
             position: fixed;
             bottom: 10px;
             right: 10px;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 12px;
             z-index: 1000;
+            background: ${connected ? '#10B981' : '#EF4444'};
+            color: white;
+            font-weight: 500;
         `;
+        statusDiv.textContent = connected ? '✅ Онлайн' : '❌ Офлайн';
         document.body.appendChild(statusDiv);
-    }
-    
-    const element = document.getElementById('connection-status');
-    if (connected) {
-        element.textContent = '✅ Онлайн';
-        element.style.background = '#10B981';
-        element.style.color = 'white';
     } else {
-        element.textContent = '❌ Офлайн';
-        element.style.background = '#EF4444';
-        element.style.color = 'white';
+        statusElement.textContent = connected ? '✅ Онлайн' : '❌ Офлайн';
+        statusElement.style.background = connected ? '#10B981' : '#EF4444';
     }
 }
 
@@ -205,7 +338,6 @@ function initGlobalHandlers() {
     document.addEventListener('error', (e) => {
         if (e.target.tagName === 'IMG') {
             console.warn('Image failed to load:', e.target.src);
-            // Заменяем на текстовый плейсхолдер
             e.target.alt = 'Изображение не загружено';
         }
     }, true);
@@ -222,13 +354,72 @@ function initGlobalHandlers() {
     
     // Адаптация для мобильных устройств
     window.addEventListener('resize', handleResize);
-    handleResize(); // Вызываем сразу при загрузке
+    handleResize();
+    
+    // Добавляем кнопку тестирования уведомлений в интерфейс
+    addTestNotificationButton();
+}
+
+// Добавление кнопки тестирования уведомлений
+function addTestNotificationButton() {
+    const testBtn = document.createElement('button');
+    testBtn.textContent = '🔔 Тест уведомлений';
+    testBtn.style.cssText = `
+        position: fixed;
+        bottom: 70px;
+        right: 20px;
+        padding: 10px 15px;
+        background: #6F51FF;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    `;
+    
+    testBtn.addEventListener('click', testNotifications);
+    document.body.appendChild(testBtn);
 }
 
 // Обработка изменения размера окна
 function handleResize() {
     const isMobile = window.innerWidth <= 768;
     document.body.classList.toggle('mobile-view', isMobile);
+    
+    // Адаптируем позиции уведомлений для мобильных
+    const notificationsContainer = document.getElementById('notifications-container');
+    const remindersContainer = document.getElementById('reminders-container');
+    
+    if (isMobile) {
+        if (notificationsContainer) {
+            notificationsContainer.style.top = '10px';
+            notificationsContainer.style.right = '10px';
+            notificationsContainer.style.left = '10px';
+            notificationsContainer.style.maxWidth = 'calc(100% - 20px)';
+        }
+        if (remindersContainer) {
+            remindersContainer.style.top = '10px';
+            remindersContainer.style.left = '10px';
+            remindersContainer.style.right = '10px';
+            remindersContainer.style.maxWidth = 'calc(100% - 20px)';
+        }
+    } else {
+        if (notificationsContainer) {
+            notificationsContainer.style.top = '20px';
+            notificationsContainer.style.right = '20px';
+            notificationsContainer.style.left = 'auto';
+            notificationsContainer.style.maxWidth = '400px';
+        }
+        if (remindersContainer) {
+            remindersContainer.style.top = '20px';
+            remindersContainer.style.left = '20px';
+            remindersContainer.style.right = 'auto';
+            remindersContainer.style.maxWidth = '400px';
+        }
+    }
 }
 
 // Глобальные вспомогательные функции
@@ -292,5 +483,95 @@ setInterval(async () => {
         console.warn('API health check failed');
     }
 }, 30000);
+
+// Добавляем CSS анимации
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutLeft {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+    }
+    
+    .notification-content,
+    .reminder-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+    }
+    
+    .reminder-text {
+        flex: 1;
+    }
+    
+    .reminder-text strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+    }
+    
+    .reminder-text small {
+        opacity: 0.9;
+        font-size: 11px;
+    }
+    
+    /* Мобильные стили для уведомлений */
+    @media (max-width: 768px) {
+        #notifications-container,
+        #reminders-container {
+            top: 10px !important;
+            left: 10px !important;
+            right: 10px !important;
+            max-width: calc(100% - 20px) !important;
+        }
+        
+        .realtime-notification,
+        .event-reminder {
+            max-width: 100% !important;
+            font-size: 12px !important;
+            padding: 12px 15px !important;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 console.log('🎯 Event Management System ready for real-time updates!');
