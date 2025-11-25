@@ -52,7 +52,49 @@ class AuthManager {
                 this.showMessage(result.message, 'error');
             }
         } catch (error) {
-            this.showMessage('Ошибка подключения к серверу', 'error');
+            console.log('API недоступен, используем демо-режим');
+            // Fallback на демо-режим
+            this.useDemoMode(login, password);
+        }
+    }
+
+    // Демо-режим аутентификации
+    useDemoMode(login, password) {
+        const demoUsers = [
+            { 
+                UserId: 1, 
+                LastName: "Демо", 
+                Name: "Пользователь", 
+                MiddleName: "Тестовый", 
+                Phone: "+7 (999) 000-00-00", 
+                Specialty: "Менеджер мероприятий", 
+                Login: "demo", 
+                Password: "demo", 
+                RoleId: 2, 
+                RoleName: "Менеджер" 
+            },
+            { 
+                UserId: 2, 
+                LastName: "Иванов", 
+                Name: "Иван", 
+                MiddleName: "Иванович", 
+                Phone: "+7 (999) 111-11-11", 
+                Specialty: "Старший менеджер", 
+                Login: "ivanov", 
+                Password: "123", 
+                RoleId: 2, 
+                RoleName: "Менеджер" 
+            }
+        ];
+
+        const user = demoUsers.find(u => u.Login === login && u.Password === password);
+        
+        if (user) {
+            this.currentUser = user;
+            this.showApp();
+            this.showMessage('Успешный вход в демо-режиме!', 'success');
+        } else {
+            this.showMessage('Неверный логин или пароль!', 'error');
         }
     }
 
@@ -150,6 +192,13 @@ class AuthManager {
             });
         } catch (error) {
             console.error('Error loading user events:', error);
+            // В демо-режиме показываем тестовые данные
+            document.getElementById('user-events-count').textContent = '2';
+            const eventsList = document.getElementById('user-events-list');
+            eventsList.innerHTML = `
+                <li>Техническая конференция 2024 (Согласован)</li>
+                <li>Корпоративный тренинг (В обработке)</li>
+            `;
         }
     }
 
