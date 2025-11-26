@@ -99,10 +99,19 @@ class AuthManager {
     }
 
     logout() {
-        this.currentUser = null;
-        this.showAuth();
-        this.showMessage('Вы вышли из системы', 'info');
-    }
+    this.currentUser = null;
+    this.showAuth();
+    this.showMessage('Вы вышли из системы', 'info');
+    
+    // Останавливаем любые уведомления
+    this.clearAllNotifications();
+}
+clearAllNotifications() {
+    const notifications = document.querySelectorAll('#notifications-container, #reminders-container, .realtime-notification, .event-reminder');
+    notifications.forEach(notification => {
+        notification.remove();
+    });
+}
 
     checkAuthStatus() {
         const savedUser = localStorage.getItem('currentUser');
@@ -129,9 +138,11 @@ class AuthManager {
         document.getElementById('auth-page').classList.remove('active');
         document.getElementById('app-page').classList.add('active');
         localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-        
+    
         this.updateUI();
         eventsManager.loadEvents();
+    
+        this.showEventsPanel();
     }
 
     updateUI() {
@@ -139,6 +150,29 @@ class AuthManager {
         this.updateButtonText();
         this.checkUserRole();
     }
+
+showEventsPanel() {
+    const eventsPanel = document.getElementById('events-panel');
+    const profilePanel = document.getElementById('profile-panel');
+    
+    // Скрываем все панели
+    if (eventsPanel) eventsPanel.classList.remove('active');
+    if (profilePanel) profilePanel.classList.remove('active');
+    
+    // Показываем только панель мероприятий
+    if (eventsPanel) eventsPanel.classList.add('active');
+    
+    // Обновляем заголовок
+    const titleElement = document.getElementById('current-panel-title');
+    if (titleElement) titleElement.textContent = 'Мероприятия';
+    
+    // Активируем кнопку мероприятий в сайдбаре
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const eventsBtn = document.querySelector('[data-panel="events"]');
+    if (eventsBtn) eventsBtn.classList.add('active');
+}
 
     updateUserProfile() {
         if (!this.currentUser) return;

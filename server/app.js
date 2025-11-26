@@ -49,13 +49,13 @@ io.on('connection', (socket) => {
         userAgent: socket.handshake.headers['user-agent']
     });
 
-    // Отправляем приветственное сообщение
+    // Отправляем приветственное сообщение без напоминаний
     socket.emit('connected', { 
         message: 'Connected to real-time server',
         clientId: socket.id,
         timestamp: new Date().toISOString()
     });
-
+    
     // Обработка запросов от клиента
     socket.on('requestData', async (data) => {
         console.log('📥 Data request from client:', socket.id, data);

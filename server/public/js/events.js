@@ -512,22 +512,30 @@ class EventsManager {
     }
 
     initWebSocket() {
-        try {
-            this.socket = io();
-            
-            this.socket.on('eventsUpdated', (data) => {
+    try {
+        this.socket = io();
+        
+        this.socket.on('eventsUpdated', (data) => {
+            // Проверяем авторизацию перед показом уведомлений
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
                 this.showNotification('Данные мероприятий обновлены!', 'info');
                 this.loadEvents();
-            });
-            
-            this.socket.on('eventReminder', (data) => {
+            }
+        });
+        
+        this.socket.on('eventReminder', (data) => {
+            // Проверяем авторизацию перед показом напоминаний
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
                 this.showNotification(`Напоминание: ${data.message}`, 'info');
-            });
-            
-        } catch (error) {
-            console.log('WebSocket недоступен, работаем в офлайн-режиме');
-        }
+            }
+        });
+        
+    } catch (error) {
+        console.log('WebSocket недоступен, работаем в офлайн-режиме');
     }
+}
 }
 
 const eventsManager = new EventsManager();

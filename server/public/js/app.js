@@ -11,8 +11,29 @@ function initApp() {
     initWebSocket();
     initGlobalHandlers();
     checkConnectionStatus();
-    showWelcomeNotifications();
+    // Убираем автоматические уведомления
+    // showWelcomeNotifications();
+    
+    // Проверяем авторизацию и показываем/скрываем кнопку теста
+    checkAuthAndUpdateUI();
 }
+
+function checkAuthAndUpdateUI() {
+    const currentUser = localStorage.getItem('currentUser');
+    const testBtn = document.getElementById('test-notifications-btn');
+    
+    if (currentUser && testBtn) {
+        testBtn.style.display = 'block';
+    } else if (testBtn) {
+        testBtn.style.display = 'none';
+    }
+}
+
+window.addEventListener('storage', function(e) {
+    if (e.key === 'currentUser') {
+        checkAuthAndUpdateUI();
+    }
+});
 
 // Инициализация WebSocket соединения
 function initWebSocket() {
@@ -67,25 +88,7 @@ function initWebSocket() {
 
 // Показ приветственных уведомлений при загрузке
 function showWelcomeNotifications() {
-    setTimeout(() => {
-        showEventReminder({
-            eventId: 6,
-            eventName: "Презентация нового продукта",
-            startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Завтра
-            daysLeft: 1,
-            message: "Презентация нового продукта начинается ЗАВТРА!"
-        });
-    }, 2000);
     
-    setTimeout(() => {
-        showEventReminder({
-            eventId: 5,
-            eventName: "Стратегическое планирование на 2025 год",
-            startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
-            daysLeft: 3,
-            message: "Стратегическое планирование на 2025 год через 3 дня!"
-        });
-    }, 5000);
 }
 
 // Показ уведомлений реального времени
@@ -248,7 +251,13 @@ function showEventReminder(eventData) {
 
 // Функция для тестирования уведомлений
 function testNotifications() {
-    // Тестовые уведомления
+    const currentUser = localStorage.getItem('currentUser');
+    if (!currentUser) {
+        showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
+        return;
+    }
+    
+    // Тестовые уведомления (оставляем только эти)
     showEventReminder({
         eventId: 1,
         eventName: "Техническая конференция 2024",
@@ -364,6 +373,7 @@ function initGlobalHandlers() {
 function addTestNotificationButton() {
     const testBtn = document.createElement('button');
     testBtn.textContent = '🔔 Тест уведомлений';
+    testBtn.id = 'test-notifications-btn';
     testBtn.style.cssText = `
         position: fixed;
         bottom: 70px;
@@ -376,8 +386,9 @@ function addTestNotificationButton() {
         font-family: 'JetBrains Mono', monospace;
         font-size: 12px;
         cursor: pointer;
-        z-index: 1000;
+        z-index: 999; // Уменьшаем z-index чтобы не перекрывал модальные окна
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        display: none; // Скрываем по умолчанию
     `;
     
     testBtn.addEventListener('click', testNotifications);

@@ -953,3 +953,23 @@ body {
         padding: 12px 15px !important;
     }
 }
+
+/* Добавим в style.css */
+.modal {
+    z-index: 1000; /* Увеличиваем z-index для модальных окон */
+}
+
+#test-notifications-btn {
+    z-index: 999; /* Уменьшаем z-index кнопки теста */
+}
+
+/* Убедимся что модальные окна всегда поверх всего */
+.modal-content {
+    z-index: 1001;
+    position: relative;
+}
+
+/* Скрываем кнопку теста на странице авторизации */
+#auth-page.active ~ #test-notifications-btn {
+    display: none !important;
+}
