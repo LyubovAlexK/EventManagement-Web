@@ -1,17 +1,18 @@
 // public/js/events.js
 class EventsManager {
-    constructor() {
+    constructor(socketInstance) { // Принимаем socket как аргумент
         this.events = [];
         this.categories = [];
         this.venues = [];
         this.selectedEvent = null;
-        this.socket = null; // Будет инициализирован в initWebSocket
+        this.socket = socketInstance; // Сохраняем переданный socket
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.initWebSocket(); // Инициализация WebSocket
+        // Убираем вызов initWebSocket, так как socket уже передан
+        // this.initWebSocket(); // Убираем
     }
 
     bindEvents() {
@@ -52,17 +53,20 @@ class EventsManager {
     }
 
     // Новая функция для обработки нажатия кнопки "Проверка на скорые мероприятия"
+    // Теперь отправляет запрос на сервер без проверки авторизации или подключения
     checkEventsBtnClick() {
-        const currentUser = localStorage.getItem('currentUser');
-        if (!currentUser) {
-            this.showNotification('⚠️ Для проверки мероприятий необходимо авторизоваться', 'info');
-            return;
-        }
+        // Убираем проверку currentUser и подключения
+        // const currentUser = localStorage.getItem('currentUser');
+        // if (!currentUser) {
+        //     this.showNotification('⚠️ Для проверки мероприятий необходимо авторизоваться', 'info');
+        //     return;
+        // }
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('requestEventReminders');
-            this.showNotification('🔍 Проверка мероприятий запущена...', 'info');
+            this.showNotification('🔍 Проверка скорых мероприятий запущена...', 'info');
         } else {
+            // Показываем уведомление, даже если подключение потеряно
             this.showNotification('❌ Нет подключения к серверу. Попробуйте позже.', 'error');
         }
     }
@@ -97,8 +101,8 @@ class EventsManager {
                 EventId: 1,
                 EventName: "Техническая конференция 2024",
                 Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
-                DateTimeStart: new Date('2024-12-10T09:00:00'),
-                DateTimeFinish: new Date('2024-12-12T18:00:00'),
+                DateTimeStart: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
+                DateTimeFinish: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), // 8 часов спустя
                 CategoryName: "Конференция",
                 VenueName: "Конференц-зал А",
                 UserName: "Иванов Иван",
@@ -112,12 +116,12 @@ class EventsManager {
                 EventId: 2,
                 EventName: "Корпоративный тренинг",
                 Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
-                DateTimeStart: new Date('2024-12-15T09:00:00'),
-                DateTimeFinish: new Date('2024-12-15T17:00:00'),
+                DateTimeStart: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Через 1 день
+                DateTimeFinish: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000),
                 CategoryName: "Тренинг",
                 VenueName: "Переговорная Б",
                 UserName: "Петрова Анна",
-                Status: "В обработке",
+                Status: "Согласован",
                 EstimatedBudget: 50000,
                 ActualBudget: 0,
                 MaxNumOfGuests: 25,
@@ -127,8 +131,8 @@ class EventsManager {
                 EventId: 3,
                 EventName: "Веб-приложение для управления мероприятиями",
                 Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
-                DateTimeStart: new Date('2024-12-01T10:00:00'),
-                DateTimeFinish: new Date('2024-12-01T12:00:00'),
+                DateTimeStart: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Через 5 дней
+                DateTimeFinish: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
                 CategoryName: "Презентация",
                 VenueName: "Онлайн",
                 UserName: "Кремлакова Любовь",
@@ -562,36 +566,4 @@ class EventsManager {
         }, 5000);
     }
 
-    initWebSocket() {
-        try {
-            // Используем глобальный socket из app.js
-            if (window.socket) {
-                this.socket = window.socket;
-
-                this.socket.on('eventsUpdated', (data) => {
-                    // Проверяем авторизацию перед показом уведомлений
-                    const currentUser = localStorage.getItem('currentUser');
-                    if (currentUser) {
-                        this.showNotification('Данные мероприятий обновлены!', 'info');
-                        this.loadEvents(); // Обновляем данные при получении события
-                    }
-                });
-
-                this.socket.on('eventReminder', (data) => {
-                    // Проверяем авторизацию перед показом напоминаний
-                    const currentUser = localStorage.getItem('currentUser');
-                    if (currentUser) {
-                        this.showNotification(`Напоминание: ${data.message}`, 'info');
-                    }
-                });
-            } else {
-                console.log('WebSocket недоступен (socket не определен в window), работаем в офлайн-режиме');
-            }
-        } catch (error) {
-            console.log('WebSocket недоступен, работаем в офлайн-режиме');
-        }
-    }
 }
-
-// Инициализация происходит в app.js после DOMContentLoaded
-// const eventsManager = new EventsManager(); // Убираем из events.js

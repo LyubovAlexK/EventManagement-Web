@@ -16,8 +16,8 @@ function initApp() {
     // Убираем автоматические уведомления
     // showWelcomeNotifications();
 
-    // Инициализируем EventsManager
-    eventsManager = new EventsManager();
+    // Инициализируем EventsManager и передаём ему socket
+    eventsManager = new EventsManager(socket);
 }
 
 // Инициализация WebSocket соединения
@@ -234,6 +234,23 @@ function showEventReminder(eventData) {
     }, 10000);
 }
 
+// Функция для тестирования уведомлений - теперь отправляет запрос на сервер
+function testNotifications() {
+    // Убираем проверку currentUser
+    // const currentUser = localStorage.getItem('currentUser');
+    // if (!currentUser) {
+    //     showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
+    //     return;
+    // }
+
+    if (socket && socket.connected) {
+        socket.emit('requestEventReminders');
+        showRealtimeNotification('🔍 Проверка скорых мероприятий запущена...');
+    } else {
+        showRealtimeNotification('❌ Нет подключения к серверу. Попробуйте позже.');
+    }
+}
+
 // Обновление статуса подключения
 function updateConnectionStatus(connected) {
     const statusElement = document.getElementById('connection-status');
@@ -311,6 +328,12 @@ function initGlobalHandlers() {
     // Адаптация для мобильных устройств
     window.addEventListener('resize', handleResize);
     handleResize();
+
+    // Привязываем тестовую функцию к кнопке, если она есть в HTML (например, для отладки)
+    // const testBtn = document.getElementById('test-notifications-btn');
+    // if (testBtn) {
+    //     testBtn.addEventListener('click', testNotifications);
+    // }
 }
 
 // Обработка изменения размера окна
