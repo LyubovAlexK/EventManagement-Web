@@ -39,21 +39,17 @@ class AuthManager {
             const result = await response.json();
 
             if (result.success) {
-                // Проверка роли - ограничение доступа
-                if (result.user.RoleName === 'Администратор' || result.user.RoleName === 'Организатор') {
-                    this.showMessage('Доступ ограничен!', 'error');
-                    return;
-                }
-
                 this.currentUser = result.user;
                 this.showApp();
                 this.showMessage('Успешный вход!', 'success');
+                
+                // Полностью скрываем блок авторизации
+                this.hideAuthCompletely();
             } else {
                 this.showMessage(result.message, 'error');
             }
         } catch (error) {
             console.log('API недоступен, используем демо-режим');
-            // Fallback на демо-режим
             this.useDemoMode(login, password);
         }
     }
@@ -93,19 +89,34 @@ class AuthManager {
             this.currentUser = user;
             this.showApp();
             this.showMessage('Успешный вход в демо-режиме!', 'success');
+            this.hideAuthCompletely();
         } else {
             this.showMessage('Неверный логин или пароль!', 'error');
         }
     }
 
+    // Полностью скрываем блок авторизации
+    hideAuthCompletely() {
+        const authPage = document.getElementById('auth-page');
+        if (authPage) {
+            authPage.style.display = 'none';
+        }
+    }
+
+     showAuthCompletely() {
+        const authPage = document.getElementById('auth-page');
+        if (authPage) {
+            authPage.style.display = 'flex';
+        }
+    }
+
     logout() {
-    this.currentUser = null;
-    this.showAuth();
-    this.showMessage('Вы вышли из системы', 'info');
-    
-    // Останавливаем любые уведомления
-    this.clearAllNotifications();
-}
+        this.currentUser = null;
+        this.showAuth();
+        this.showAuthCompletely(); // Показываем форму авторизации
+        this.showMessage('Вы вышли из системы', 'info');
+        this.clearAllNotifications();
+    }
 clearAllNotifications() {
     const notifications = document.querySelectorAll('#notifications-container, #reminders-container, .realtime-notification, .event-reminder');
     notifications.forEach(notification => {
@@ -117,14 +128,9 @@ clearAllNotifications() {
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
             const user = JSON.parse(savedUser);
-            // Проверка роли при восстановлении сессии
-            if (user.RoleName === 'Администратор' || user.RoleName === 'Организатор') {
-                localStorage.removeItem('currentUser');
-                this.showMessage('Доступ ограничен!', 'error');
-                return;
-            }
             this.currentUser = user;
             this.showApp();
+            this.hideAuthCompletely(); // Скрываем авторизацию если пользователь уже вошел
         }
     }
 
@@ -138,10 +144,9 @@ clearAllNotifications() {
         document.getElementById('auth-page').classList.remove('active');
         document.getElementById('app-page').classList.add('active');
         localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-    
+        
         this.updateUI();
         eventsManager.loadEvents();
-    
         this.showEventsPanel();
     }
 

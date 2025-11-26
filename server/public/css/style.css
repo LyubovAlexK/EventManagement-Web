@@ -973,3 +973,23 @@ body {
 #auth-page.active ~ #test-notifications-btn {
     display: none !important;
 }
+
+#check-events-btn.active {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid #FFFFFF;
+}
+
+/* Скрываем auth-page когда не активна */
+#auth-page:not(.active) {
+    display: none !important;
+}
+
+/* Показываем auth-page когда активна */
+#auth-page.active {
+    display: flex !important;
+}
+
+/* Убедимся что app-page скрыт когда не активен */
+#app-page:not(.active) {
+    display: none !important;
+}

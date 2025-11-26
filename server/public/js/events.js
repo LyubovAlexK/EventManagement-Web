@@ -44,6 +44,18 @@ class EventsManager {
             const row = e.target.closest('tr');
             if (row) this.selectEvent(row);
         });
+        this.bindRealTimeEvents();
+    }
+
+    bindRealTimeEvents() {
+        // Обработчики для мгновенного обновления данных
+        document.addEventListener('eventAdded', (e) => {
+            this.loadEvents();
+        });
+        
+        document.addEventListener('eventUpdated', (e) => {
+            this.loadEvents();
+        });
     }
 
     async loadEvents() {
@@ -273,7 +285,7 @@ class EventsManager {
         });
     }
 
-    async handleEventSubmit(e) {
+     async handleEventSubmit(e) {
         e.preventDefault();
         
         const formData = new FormData(e.target);
@@ -295,6 +307,11 @@ class EventsManager {
                     },
                     body: JSON.stringify(eventData)
                 });
+                
+                // Создаем событие для реального времени
+                document.dispatchEvent(new CustomEvent('eventAdded', {
+                    detail: eventData
+                }));
             } else {
                 const eventId = e.target.dataset.eventId;
                 response = await fetch(`/api/events/${eventId}`, {
@@ -304,6 +321,11 @@ class EventsManager {
                     },
                     body: JSON.stringify(eventData)
                 });
+                
+                // Создаем событие для реального времени
+                document.dispatchEvent(new CustomEvent('eventUpdated', {
+                    detail: { ...eventData, EventId: eventId }
+                }));
             }
             
             const result = await response.json();
@@ -312,13 +334,21 @@ class EventsManager {
                 this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'}`, 'success');
                 this.closeModals();
                 this.loadEvents();
+                
+                // Уведомляем через WebSocket
+                if (this.socket) {
+                    this.socket.emit('eventChanged', {
+                        action: mode === 'add' ? 'added' : 'updated',
+                        event: eventData
+                    });
+                }
             } else {
                 this.showNotification(`Ошибка при ${mode === 'add' ? 'добавлении' : 'обновлении'} мероприятия`, 'error');
             }
         } catch (error) {
             this.showNotification('Ошибка подключения к серверу. Данные сохранены локально.', 'info');
             this.closeModals();
-            this.loadEvents(); // Перезагружаем для отображения демо-данных
+            this.loadEvents();
         }
     }
 

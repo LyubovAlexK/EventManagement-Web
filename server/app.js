@@ -22,8 +22,9 @@ app.use(cors());
 app.use(express.json());
 
 // Обслуживание статических файлов
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname)));
+app.use('/img', express.static(path.join(__dirname, 'img')));
+app.use('/js', express.static(path.join(__dirname, 'js')));
 
 // Middleware для логирования запросов
 app.use((req, res, next) => {
@@ -33,13 +34,65 @@ app.use((req, res, next) => {
 
 // Подключение к БД (демо-режим)
 connectDB().then(() => {
-    console.log('🚀 Demo server started successfully');
+    console.log('🚀 Demo database connected');
 }).catch(error => {
-    console.log('⚠️  Server started in demo mode (no database)');
+    console.log('⚠️ Server started in demo mode');
 });
 
 // Хранилище подключенных клиентов
 const connectedClients = new Map();
+
+// Вспомогательная функция для сообщений напоминаний
+function getReminderMessage(days) {
+    if (days === 1) return 'начинается ЗАВТРА!';
+    if (days === 2) return 'через 2 дня!';
+    if (days === 3) return 'через 3 дня!';
+    return `через ${days} дней!`;
+}
+
+// Функция для оповещения всех клиентов об изменениях
+function notifyClients(event, data) {
+    console.log(`📢 Broadcasting ${event} to ${connectedClients.size} clients`);
+    io.emit(event, {
+        ...data,
+        timestamp: new Date().toISOString(),
+        server: 'event-management'
+    });
+}
+
+// Функция для проверки и отправки напоминаний
+async function checkAndSendReminders(socket = null) {
+    try {
+        const events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
+        const now = new Date();
+        
+        events.forEach(event => {
+            const eventDate = new Date(event.DateTimeStart);
+            const timeDiff = eventDate.getTime() - now.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            if (daysDiff <= 3 && daysDiff > 0) {
+                const reminderData = {
+                    eventId: event.EventId,
+                    eventName: event.EventName,
+                    startTime: event.DateTimeStart,
+                    daysLeft: daysDiff,
+                    message: `"${event.EventName}" ${getReminderMessage(daysDiff)}`
+                };
+                
+                if (socket) {
+                    // Отправляем только конкретному клиенту
+                    socket.emit('eventReminder', reminderData);
+                } else {
+                    // Отправляем всем клиентам
+                    notifyClients('eventReminder', reminderData);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error checking event reminders:', error);
+    }
+}
 
 // Socket.IO обработчики
 io.on('connection', (socket) => {
@@ -49,13 +102,13 @@ io.on('connection', (socket) => {
         userAgent: socket.handshake.headers['user-agent']
     });
 
-    // Отправляем приветственное сообщение без напоминаний
+    // Отправляем приветственное сообщение
     socket.emit('connected', { 
         message: 'Connected to real-time server',
         clientId: socket.id,
         timestamp: new Date().toISOString()
     });
-    
+
     // Обработка запросов от клиента
     socket.on('requestData', async (data) => {
         console.log('📥 Data request from client:', socket.id, data);
@@ -88,6 +141,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Запрос напоминаний о мероприятиях
+    socket.on('requestEventReminders', async () => {
+        console.log('🔔 Client requested event reminders:', socket.id);
+        await checkAndSendReminders(socket);
+    });
+
+    // Обработка изменений мероприятий
+    socket.on('eventChanged', (data) => {
+        console.log('🔄 Event changed by client:', data);
+        notifyClients('eventsUpdated', data);
+    });
+
     // Пинг-понг для проверки соединения
     socket.on('ping', (data) => {
         socket.emit('pong', {
@@ -99,21 +164,12 @@ io.on('connection', (socket) => {
     // Отслеживание активности пользователя
     socket.on('userActivity', (data) => {
         console.log('👤 User activity:', socket.id, data);
-        
-        if (data.action === 'view_event') {
-            console.log(`User viewed event: ${data.eventId}`);
-        }
     });
 
     // Обработка отключения
     socket.on('disconnect', (reason) => {
         console.log('🔌 Client disconnected:', socket.id, reason);
         connectedClients.delete(socket.id);
-        
-        socket.broadcast.emit('userDisconnected', {
-            clientId: socket.id,
-            reason: reason
-        });
     });
 
     // Обработка ошибок
@@ -121,64 +177,6 @@ io.on('connection', (socket) => {
         console.error('Socket error from client:', socket.id, error);
     });
 });
-
-// Функция для оповещения всех клиентов об изменениях
-function notifyClients(event, data) {
-    console.log(`📢 Broadcasting ${event} to ${connectedClients.size} clients`);
-    io.emit(event, {
-        ...data,
-        timestamp: new Date().toISOString(),
-        server: 'event-management'
-    });
-}
-
-// Функция для напоминаний о мероприятиях
-function startEventReminders() {
-    setInterval(async () => {
-        try {
-            const now = new Date();
-            const events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
-            
-            events.forEach(event => {
-                const eventDate = new Date(event.DateTimeStart);
-                const timeDiff = eventDate.getTime() - now.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                
-                // Отправляем уведомления за 1, 2, 3 дня
-                if (daysDiff === 1) {
-                    notifyClients('eventReminder', {
-                        eventId: event.EventId,
-                        eventName: event.EventName,
-                        startTime: event.DateTimeStart,
-                        daysLeft: 1,
-                        message: `"${event.EventName}" начинается ЗАВТРА!`
-                    });
-                } else if (daysDiff === 2) {
-                    notifyClients('eventReminder', {
-                        eventId: event.EventId,
-                        eventName: event.EventName,
-                        startTime: event.DateTimeStart,
-                        daysLeft: 2,
-                        message: `"${event.EventName}" через 2 дня!`
-                    });
-                } else if (daysDiff === 3) {
-                    notifyClients('eventReminder', {
-                        eventId: event.EventId,
-                        eventName: event.EventName,
-                        startTime: event.DateTimeStart,
-                        daysLeft: 3,
-                        message: `"${event.EventName}" через 3 дня!`
-                    });
-                }
-            });
-        } catch (error) {
-            console.error('Error checking event reminders:', error);
-        }
-    }, 60 * 1000); // Проверяем каждую минуту
-}
-
-// Запускаем систему напоминаний
-startEventReminders();
 
 // API Routes
 
@@ -207,41 +205,38 @@ app.post('/api/auth/login', async (req, res) => {
         console.log(`🔐 Login attempt: ${login}`);
         
         // Демо-логика аутентификации
-        const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
-            INNER JOIN Role r ON u.RoleId = r.RoleId 
-            WHERE u.Login = '${login}' AND u.Password = '${password}'
-        `);
-        
         let user;
-        if (users.length > 0) {
-            user = users[0];
-        } else {
-            // Демо-режим: ищем пользователя по логину и паролю
+        try {
+            const users = await query(`
+                SELECT u.*, r.RoleName 
+                FROM Users u 
+                INNER JOIN Role r ON u.RoleId = r.RoleId 
+                WHERE u.Login = '${login}' AND u.Password = '${password}'
+            `);
+            user = users.length > 0 ? users[0] : null;
+        } catch (error) {
+            // В демо-режиме используем локальные данные
             user = getDemoUsers().find(u => u.Login === login && u.Password === password);
             
             // Если не нашли, используем демо-пользователя
             if (!user) {
-                user = getDemoUsers().find(u => u.Login === 'demo');
+                user = getDemoUsers().find(u => u.Login === 'demo' && u.Password === 'demo');
             }
         }
         
         if (!user) {
-            res.status(401).json({
+            return res.status(401).json({
                 success: false,
                 message: 'Неверный логин или пароль'
             });
-            return;
         }
 
         // Проверка роли - ограничение доступа
         if (user.RoleName === 'Администратор' || user.RoleName === 'Организатор') {
-            res.status(403).json({
+            return res.status(403).json({
                 success: false,
                 message: 'Доступ ограничен!'
             });
-            return;
         }
 
         res.json({
@@ -273,7 +268,7 @@ app.get('/api/events', async (req, res) => {
         res.json(events);
     } catch (error) {
         console.error('Events API error:', error);
-        // Возвращаем демо-данные напрямую
+        // Возвращаем демо-данные
         res.json(getDemoEvents());
     }
 });
@@ -284,44 +279,77 @@ app.post('/api/events', async (req, res) => {
         const {
             EventName, Description, DateTimeStart, DateTimeFinish,
             Status, EstimatedBudget, MaxNumOfGuests, CategoryId,
-            VenueId, UserId
+            VenueId
         } = req.body;
         
         console.log('📝 New event creation:', EventName);
         
         // В демо-режиме просто логируем
-        const result = await query(`
-            INSERT INTO Event (
-                EventName, Description, DateTimeStart, DateTimeFinish,
-                Status, EstimatedBudget, ActualBudget, MaxNumOfGuests,
-                CategoryId, VenueId, UserId
-            ) VALUES (
-                '${EventName}', '${Description}', '${DateTimeStart}', '${DateTimeFinish}',
-                '${Status}', ${EstimatedBudget || 0}, 0, ${MaxNumOfGuests || 1},
-                ${CategoryId || 1}, ${VenueId || 1}, ${UserId || 1}
-            )
-        `);
+        const newEventId = Date.now();
         
         // Уведомляем всех клиентов о новом мероприятии
         notifyClients('eventsUpdated', { 
             action: 'added',
             eventName: EventName,
-            eventId: Date.now()
+            eventId: newEventId,
+            eventData: {
+                EventId: newEventId,
+                EventName,
+                Description,
+                DateTimeStart,
+                DateTimeFinish,
+                Status,
+                EstimatedBudget,
+                ActualBudget: 0,
+                MaxNumOfGuests,
+                CategoryName: 'Категория',
+                VenueName: 'Место',
+                UserName: 'Текущий пользователь'
+            }
         });
         
         res.json({ 
             success: true, 
-            message: 'Мероприятие добавлено (демо-режим)',
+            message: 'Мероприятие добавлено',
+            eventId: newEventId,
             demo: true
         });
         
     } catch (error) {
         console.error('Add event error:', error);
-        // Даже при ошибке возвращаем успех в демо-режиме
+        res.status(500).json({ 
+            success: false, 
+            message: 'Ошибка при добавлении мероприятия'
+        });
+    }
+});
+
+// Обновление мероприятия
+app.put('/api/events/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const eventData = req.body;
+        
+        console.log(`✏️ Event update for ID ${id}:`, eventData.EventName);
+        
+        // Уведомляем всех клиентов об обновлении мероприятия
+        notifyClients('eventsUpdated', { 
+            action: 'updated',
+            eventId: id,
+            eventData: eventData
+        });
+        
         res.json({ 
             success: true, 
-            message: 'Мероприятие добавлено (демо-режим)',
+            message: 'Мероприятие обновлено',
             demo: true
+        });
+        
+    } catch (error) {
+        console.error('Update event error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Ошибка при обновлении мероприятия'
         });
     }
 });
@@ -334,12 +362,6 @@ app.put('/api/events/:id/budget', async (req, res) => {
         
         console.log(`💰 Budget update for event ${id}: ${ActualBudget}`);
         
-        await query(`
-            UPDATE Event 
-            SET ActualBudget = ${ActualBudget} 
-            WHERE EventId = ${id}
-        `);
-        
         notifyClients('eventsUpdated', { 
             action: 'budget_updated', 
             eventId: id,
@@ -348,16 +370,15 @@ app.put('/api/events/:id/budget', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: 'Бюджет обновлен (демо-режим)',
+            message: 'Бюджет обновлен',
             demo: true
         });
         
     } catch (error) {
         console.error('Budget update error:', error);
-        res.json({ 
-            success: true, 
-            message: 'Бюджет обновлен (демо-режим)',
-            demo: true
+        res.status(500).json({ 
+            success: false, 
+            message: 'Ошибка при обновлении бюджета'
         });
     }
 });
@@ -423,7 +444,8 @@ app.get('/api/users', async (req, res) => {
 app.use('/api/*', (req, res) => {
     res.status(404).json({
         error: 'API route not found',
-        path: req.originalUrl
+        path: req.originalUrl,
+        demo: true
     });
 });
 
@@ -451,7 +473,7 @@ server.listen(PORT, () => {
     console.log(`🔑 Demo login: "demo" / "demo"`);
     console.log('🚀 Real-time features:');
     console.log('   • Instant data updates');
-    console.log('   • Event reminders (1, 2, 3 days before)');
+    console.log('   • Event reminders (по запросу)');
     console.log('   • Multi-user synchronization');
     console.log('   • Connection status monitoring');
     console.log('   • Mobile responsive design');
