@@ -21,10 +21,12 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
-// Обслуживание статических файлов
-app.use(express.static(path.join(__dirname)));
-app.use('/img', express.static(path.join(__dirname, 'img')));
-app.use('/js', express.static(path.join(__dirname, 'js')));
+// Обслуживание статических файлов ИЗ ПАПКИ 'public'
+// Это ключевое изменение: теперь Express ищет CSS, JS, изображения и index.html в папке 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+// app.use('/img', express.static(path.join(__dirname, 'img'))); // Убрано, т.к. img теперь в public/img
+// app.use('/js', express.static(path.join(__dirname, 'js')));   // Убрано, т.к. js теперь в public/js
+// app.use('/css', express.static(path.join(__dirname, 'css'))); // Убрано, т.к. css теперь в public/css
 
 // Middleware для логирования запросов
 app.use((req, res, next) => {
@@ -180,9 +182,9 @@ io.on('connection', (socket) => {
 
 // API Routes
 
-// Корневой маршрут - отдаем index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Корневой маршрут - отдаем index.html из папки 'public'
+app.get('/', (req, res) => { 
+    res.sendFile(path.join(__dirname, 'public', 'index.html')); 
 });
 
 // Статус сервера
@@ -449,9 +451,9 @@ app.use('/api/*', (req, res) => {
     });
 });
 
-// Для всех остальных маршрутов отдаем index.html (для SPA)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Для всех остальных маршрутов отдаем index.html из папки 'public' (для SPA)
+app.get('*', (req, res) => { 
+    res.sendFile(path.join(__dirname, 'public', 'index.html')); 
 });
 
 // Обработка ошибок
