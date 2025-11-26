@@ -130,7 +130,7 @@ clearAllNotifications() {
             const user = JSON.parse(savedUser);
             this.currentUser = user;
             this.showApp();
-            this.hideAuthCompletely(); 
+            this.hideAuthCompletely(); // Скрываем авторизацию если пользователь уже вошел
         }
     }
 

@@ -1,18 +1,17 @@
 // public/js/events.js
 class EventsManager {
-    constructor(socketInstance) { // Принимаем socket как аргумент
+    constructor() {
         this.events = [];
         this.categories = [];
         this.venues = [];
         this.selectedEvent = null;
-        this.socket = socketInstance; // Сохраняем переданный socket
+        this.socket = null; // Будет инициализирован в initWebSocket
         this.init();
     }
 
     init() {
         this.bindEvents();
-        // Убираем вызов initWebSocket, так как socket уже передан
-        // this.initWebSocket(); // Убираем
+        this.initWebSocket(); // Инициализация WebSocket
     }
 
     bindEvents() {
@@ -27,8 +26,8 @@ class EventsManager {
         document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditEventModal());
         document.getElementById('refresh-btn').addEventListener('click', () => this.loadEvents());
 
-        // Новый обработчик для кнопки "Проверка на скорые мероприятия" - УБРАН, так как он теперь в app.js
-        // document.getElementById('check-events-btn').addEventListener('click', () => this.checkEventsBtnClick());
+        // Новый обработчик для кнопки "Проверка на скорые мероприятия"
+        document.getElementById('check-events-btn').addEventListener('click', () => this.showDemoReminders());
 
         document.getElementById('search-events').addEventListener('input', (e) => {
             this.filterEvents(e.target.value);
@@ -52,8 +51,135 @@ class EventsManager {
         this.bindRealTimeEvents();
     }
 
-    // Убираем функцию checkEventsBtnClick, так как она перенесена в app.js
-    // checkEventsBtnClick() { ... }
+    // Новая функция для показа демо-напоминаний
+    showDemoReminders() {
+        console.log('🔔 Showing demo event reminders');
+        
+        // Создаем тестовые данные для напоминаний
+        const now = new Date();
+        
+        // Мероприятие через 3 дня
+        const in3Days = new Date(now);
+        in3Days.setDate(now.getDate() + 3);
+        in3Days.setHours(14, 0, 0, 0);
+        
+        // Мероприятие через 1 день
+        const in1Day = new Date(now);
+        in1Day.setDate(now.getDate() + 1);
+        in1Day.setHours(10, 0, 0, 0);
+
+        // Тестовые напоминания
+        const demoReminders = [
+            {
+                eventId: 101,
+                eventName: "Техническая конференция 2024",
+                startTime: in3Days.toISOString(),
+                daysLeft: 3,
+                message: '"Техническая конференция 2024" через 3 дня!'
+            },
+            {
+                eventId: 102,
+                eventName: "Презентация нового продукта", 
+                startTime: in1Day.toISOString(),
+                daysLeft: 1,
+                message: '"Презентация нового продукта" начинается ЗАВТРА!'
+            }
+        ];
+
+        // Показываем все напоминания
+        demoReminders.forEach(reminder => {
+            this.showEventReminderNotification(reminder);
+        });
+
+        this.showNotification('🔔 Показаны тестовые напоминания о мероприятиях', 'info');
+    }
+
+    // Функция для показа уведомления о напоминании
+    showEventReminderNotification(eventData) {
+        let remindersContainer = document.getElementById('reminders-container');
+        if (!remindersContainer) {
+            remindersContainer = document.createElement('div');
+            remindersContainer.id = 'reminders-container';
+            remindersContainer.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-width: 400px;
+            `;
+            document.body.appendChild(remindersContainer);
+        }
+
+        const reminder = document.createElement('div');
+        reminder.className = 'event-reminder';
+
+        let icon = '⏰';
+        let bgColor = '#F59E0B';
+
+        if (eventData.daysLeft === 1) {
+            icon = '🚨';
+            bgColor = '#EF4444';
+        } else if (eventData.daysLeft === 2) {
+            icon = '⚠️';
+            bgColor = '#F59E0B';
+        } else if (eventData.daysLeft === 3) {
+            icon = '📅';
+            bgColor = '#3B82F6';
+        }
+
+        reminder.innerHTML = `
+            <div class="reminder-content">
+                <span class="reminder-icon">${icon}</span>
+                <div class="reminder-text">
+                    <strong>${eventData.message}</strong>
+                    <div style="margin: 5px 0; font-size: 13px;">${eventData.eventName}</div>
+                    <small>Начинается: ${new Date(eventData.startTime).toLocaleString('ru-RU')}</small>
+                </div>
+                <button class="reminder-close">×</button>
+            </div>
+        `;
+
+        reminder.style.cssText = `
+            background: ${bgColor};
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: slideInLeft 0.3s ease-out;
+            max-width: 350px;
+        `;
+
+        const closeBtn = reminder.querySelector('.reminder-close');
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+        `;
+
+        closeBtn.addEventListener('click', () => {
+            reminder.style.animation = 'slideOutLeft 0.3s ease-in';
+            setTimeout(() => reminder.remove(), 300);
+        });
+
+        remindersContainer.appendChild(reminder);
+
+        // Автоматическое скрытие через 10 секунд
+        setTimeout(() => {
+            if (reminder.parentElement) {
+                reminder.style.animation = 'slideOutLeft 0.3s ease-in';
+                setTimeout(() => reminder.remove(), 300);
+            }
+        }, 10000);
+    }
 
     bindRealTimeEvents() {
         // Обработчики для мгновенного обновления данных
@@ -85,8 +211,8 @@ class EventsManager {
                 EventId: 1,
                 EventName: "Техническая конференция 2024",
                 Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
-                DateTimeStart: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
-                DateTimeFinish: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), // 8 часов спустя
+                DateTimeStart: new Date('2024-12-10T09:00:00'),
+                DateTimeFinish: new Date('2024-12-12T18:00:00'),
                 CategoryName: "Конференция",
                 VenueName: "Конференц-зал А",
                 UserName: "Иванов Иван",
@@ -100,12 +226,12 @@ class EventsManager {
                 EventId: 2,
                 EventName: "Корпоративный тренинг",
                 Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
-                DateTimeStart: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Через 1 день
-                DateTimeFinish: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000),
+                DateTimeStart: new Date('2024-12-15T09:00:00'),
+                DateTimeFinish: new Date('2024-12-15T17:00:00'),
                 CategoryName: "Тренинг",
                 VenueName: "Переговорная Б",
                 UserName: "Петрова Анна",
-                Status: "Согласован",
+                Status: "В обработке",
                 EstimatedBudget: 50000,
                 ActualBudget: 0,
                 MaxNumOfGuests: 25,
@@ -115,8 +241,8 @@ class EventsManager {
                 EventId: 3,
                 EventName: "Веб-приложение для управления мероприятиями",
                 Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
-                DateTimeStart: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Через 5 дней
-                DateTimeFinish: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+                DateTimeStart: new Date('2024-12-01T10:00:00'),
+                DateTimeFinish: new Date('2024-12-01T12:00:00'),
                 CategoryName: "Презентация",
                 VenueName: "Онлайн",
                 UserName: "Кремлакова Любовь",
@@ -550,4 +676,36 @@ class EventsManager {
         }, 5000);
     }
 
+    initWebSocket() {
+        try {
+            // Используем глобальный socket из app.js
+            if (window.socket) {
+                this.socket = window.socket;
+
+                this.socket.on('eventsUpdated', (data) => {
+                    // Проверяем авторизацию перед показом уведомлений
+                    const currentUser = localStorage.getItem('currentUser');
+                    if (currentUser) {
+                        this.showNotification('Данные мероприятий обновлены!', 'info');
+                        this.loadEvents(); // Обновляем данные при получении события
+                    }
+                });
+
+                this.socket.on('eventReminder', (data) => {
+                    // Проверяем авторизацию перед показом напоминаний
+                    const currentUser = localStorage.getItem('currentUser');
+                    if (currentUser) {
+                        this.showEventReminderNotification(data);
+                    }
+                });
+            } else {
+                console.log('WebSocket недоступен (socket не определен в window), работаем в офлайн-режиме');
+            }
+        } catch (error) {
+            console.log('WebSocket недоступен, работаем в офлайн-режиме');
+        }
+    }
 }
+
+// Инициализация происходит в app.js после DOMContentLoaded
+// const eventsManager = new EventsManager(); // Убираем из events.js
