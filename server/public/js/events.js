@@ -1,16 +1,17 @@
+// public/js/events.js
 class EventsManager {
     constructor() {
         this.events = [];
         this.categories = [];
         this.venues = [];
         this.selectedEvent = null;
-        this.socket = null;
+        this.socket = null; // Будет инициализирован в initWebSocket
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.initWebSocket();
+        this.initWebSocket(); // Инициализация WebSocket
     }
 
     bindEvents() {
@@ -24,6 +25,9 @@ class EventsManager {
         document.getElementById('add-event-btn').addEventListener('click', () => this.showAddEventModal());
         document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditEventModal());
         document.getElementById('refresh-btn').addEventListener('click', () => this.loadEvents());
+
+        // Новый обработчик для кнопки "Проверка на скорые мероприятия"
+        document.getElementById('check-events-btn').addEventListener('click', () => this.checkEventsBtnClick());
 
         document.getElementById('search-events').addEventListener('input', (e) => {
             this.filterEvents(e.target.value);
@@ -47,12 +51,28 @@ class EventsManager {
         this.bindRealTimeEvents();
     }
 
+    // Новая функция для обработки нажатия кнопки "Проверка на скорые мероприятия"
+    checkEventsBtnClick() {
+        const currentUser = localStorage.getItem('currentUser');
+        if (!currentUser) {
+            this.showNotification('⚠️ Для проверки мероприятий необходимо авторизоваться', 'info');
+            return;
+        }
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('requestEventReminders');
+            this.showNotification('🔍 Проверка мероприятий запущена...', 'info');
+        } else {
+            this.showNotification('❌ Нет подключения к серверу. Попробуйте позже.', 'error');
+        }
+    }
+
     bindRealTimeEvents() {
         // Обработчики для мгновенного обновления данных
         document.addEventListener('eventAdded', (e) => {
             this.loadEvents();
         });
-        
+
         document.addEventListener('eventUpdated', (e) => {
             this.loadEvents();
         });
@@ -94,7 +114,7 @@ class EventsManager {
                 Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
                 DateTimeStart: new Date('2024-12-15T09:00:00'),
                 DateTimeFinish: new Date('2024-12-15T17:00:00'),
-                CategoryName: "Тренинг", 
+                CategoryName: "Тренинг",
                 VenueName: "Переговорная Б",
                 UserName: "Петрова Анна",
                 Status: "В обработке",
@@ -152,17 +172,17 @@ class EventsManager {
     displayEvents(eventsToShow = null) {
         const events = eventsToShow || this.events;
         const tbody = document.getElementById('events-tbody');
-        
+
         tbody.innerHTML = '';
-        
+
         events.forEach(event => {
             const row = document.createElement('tr');
             row.dataset.eventId = event.EventId;
-            
+
             if (this.selectedEvent && this.selectedEvent.EventId === event.EventId) {
                 row.classList.add('selected');
             }
-            
+
             row.innerHTML = `
                 <td>${event.EventId}</td>
                 <td>${this.escapeHtml(event.EventName)}</td>
@@ -176,7 +196,7 @@ class EventsManager {
                 <td>${this.formatCurrency(event.ActualBudget)}</td>
                 <td>${event.MaxNumOfGuests}</td>
             `;
-            
+
             tbody.appendChild(row);
         });
     }
@@ -191,12 +211,12 @@ class EventsManager {
 
     async showEditEventModal() {
         if (!this.selectedEvent) return;
-        
+
         await this.loadModalData();
         document.getElementById('modal-title').textContent = 'Редактирование мероприятия';
         document.getElementById('event-form').dataset.mode = 'edit';
         document.getElementById('event-form').dataset.eventId = this.selectedEvent.EventId;
-        
+
         // Заполняем форму данными выбранного мероприятия
         this.fillEventForm(this.selectedEvent);
         document.getElementById('event-modal').classList.add('active');
@@ -210,7 +230,7 @@ class EventsManager {
         document.querySelector('[name="Status"]').value = event.Status || '';
         document.querySelector('[name="EstimatedBudget"]').value = event.EstimatedBudget || '';
         document.querySelector('[name="MaxNumOfGuests"]').value = event.MaxNumOfGuests || '';
-        
+
         // Устанавливаем выбранные значения в select'ах
         setTimeout(() => {
             if (event.CategoryName) {
@@ -222,7 +242,7 @@ class EventsManager {
                     }
                 }
             }
-            
+
             if (event.VenueName) {
                 const venueSelect = document.querySelector('[name="VenueId"]');
                 for (let option of venueSelect.options) {
@@ -243,14 +263,14 @@ class EventsManager {
                 this.categories = await categoriesResponse.json();
             }
             this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
-            
+
             // Загрузка мест проведения
             if (this.venues.length === 0) {
                 const venuesResponse = await fetch('/api/venues');
                 this.venues = await venuesResponse.json();
             }
             this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
-            
+
         } catch (error) {
             console.log('API недоступен, используем демо-данные для форм');
             // Fallback на демо-данные
@@ -267,7 +287,7 @@ class EventsManager {
                 { VenueId: 3, VenueName: "Актовый зал", Address: "ул. Центральная, 15", Capacity: 500, Description: "Большой актовый зал" },
                 { VenueId: 4, VenueName: "Онлайн", Address: "Zoom/Teams", Capacity: 1000, Description: "Виртуальное мероприятие" }
             ];
-            
+
             this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
             this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
         }
@@ -276,7 +296,7 @@ class EventsManager {
     fillSelect(selectName, data, valueField, textField) {
         const select = document.querySelector(`[name="${selectName}"]`);
         select.innerHTML = '<option value="">Выберите...</option>';
-        
+
         data.forEach(item => {
             const option = document.createElement('option');
             option.value = item[valueField];
@@ -285,13 +305,13 @@ class EventsManager {
         });
     }
 
-     async handleEventSubmit(e) {
+    async handleEventSubmit(e) {
         e.preventDefault();
-        
+
         const formData = new FormData(e.target);
         const eventData = Object.fromEntries(formData.entries());
         const mode = e.target.dataset.mode;
-        
+
         // Валидация
         if (!this.validateEventForm(eventData)) {
             return;
@@ -307,7 +327,7 @@ class EventsManager {
                     },
                     body: JSON.stringify(eventData)
                 });
-                
+
                 // Создаем событие для реального времени
                 document.dispatchEvent(new CustomEvent('eventAdded', {
                     detail: eventData
@@ -321,20 +341,20 @@ class EventsManager {
                     },
                     body: JSON.stringify(eventData)
                 });
-                
+
                 // Создаем событие для реального времени
                 document.dispatchEvent(new CustomEvent('eventUpdated', {
                     detail: { ...eventData, EventId: eventId }
                 }));
             }
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'}`, 'success');
                 this.closeModals();
                 this.loadEvents();
-                
+
                 // Уведомляем через WebSocket
                 if (this.socket) {
                     this.socket.emit('eventChanged', {
@@ -356,12 +376,12 @@ class EventsManager {
         // Валидация дат
         const startDate = new Date(data.DateTimeStart);
         const endDate = new Date(data.DateTimeFinish);
-        
+
         if (startDate >= endDate) {
             this.showNotification('Дата окончания должна быть позже даты начала', 'error');
             return false;
         }
-        
+
         if (startDate < new Date()) {
             this.showNotification('Дата начала не может быть в прошлом', 'error');
             return false;
@@ -421,17 +441,17 @@ class EventsManager {
         document.querySelectorAll('.content-panel').forEach(panel => {
             panel.classList.remove('active');
         });
-        
+
         // Показываем выбранную панель
         document.getElementById(`${panelName}-panel`).classList.add('active');
-        
+
         // Обновляем заголовок
         const titles = {
             'events': 'Мероприятия',
             'profile': 'Личный кабинет'
         };
         document.getElementById('current-panel-title').textContent = titles[panelName] || 'Панель';
-        
+
         // Обновляем активную кнопку в сайдбаре
         document.querySelectorAll('.sidebar-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -444,14 +464,14 @@ class EventsManager {
         document.querySelectorAll('#events-table tr').forEach(tr => {
             tr.classList.remove('selected');
         });
-        
+
         // Выделяем выбранную строку
         row.classList.add('selected');
-        
+
         // Находим выбранное мероприятие
         const eventId = parseInt(row.dataset.eventId);
         this.selectedEvent = this.events.find(event => event.EventId === eventId);
-        
+
         this.updateEditButton();
     }
 
@@ -465,15 +485,15 @@ class EventsManager {
             this.displayEvents();
             return;
         }
-        
-        const filteredEvents = this.events.filter(event => 
+
+        const filteredEvents = this.events.filter(event =>
             event.EventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             event.Description.toLowerCase().includes(searchTerm.toLowerCase()) ||
             event.CategoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             event.VenueName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             event.Status.toLowerCase().includes(searchTerm.toLowerCase())
         );
-        
+
         this.displayEvents(filteredEvents);
     }
 
@@ -481,25 +501,25 @@ class EventsManager {
         this.events.sort((a, b) => {
             let aValue = a[column];
             let bValue = b[column];
-            
+
             // Для числовых значений
             if (column.includes('Budget') || column.includes('Guests') || column.includes('Id')) {
                 aValue = Number(aValue) || 0;
                 bValue = Number(bValue) || 0;
                 return aValue - bValue;
             }
-            
+
             // Для дат
             if (column.includes('DateTime')) {
                 aValue = new Date(aValue);
                 bValue = new Date(bValue);
                 return aValue - bValue;
             }
-            
+
             // Для строк
             return String(aValue).localeCompare(String(bValue));
         });
-        
+
         this.displayEvents();
     }
 
@@ -513,7 +533,7 @@ class EventsManager {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
-        
+
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -525,7 +545,7 @@ class EventsManager {
             z-index: 10000;
             max-width: 300px;
         `;
-        
+
         if (type === 'error') {
             notification.style.background = '#EF4444';
         } else if (type === 'success') {
@@ -533,39 +553,41 @@ class EventsManager {
         } else {
             notification.style.background = '#6B7280';
         }
-        
+
         document.body.appendChild(notification);
-        
+
         setTimeout(() => {
             notification.remove();
         }, 5000);
     }
 
     initWebSocket() {
-    try {
-        this.socket = io();
-        
-        this.socket.on('eventsUpdated', (data) => {
-            // Проверяем авторизацию перед показом уведомлений
-            const currentUser = localStorage.getItem('currentUser');
-            if (currentUser) {
-                this.showNotification('Данные мероприятий обновлены!', 'info');
-                this.loadEvents();
+        try {
+            // Используем глобальный socket из app.js
+            if (window.socket) {
+                this.socket = window.socket;
+
+                this.socket.on('eventsUpdated', (data) => {
+                    // Проверяем авторизацию перед показом уведомлений
+                    const currentUser = localStorage.getItem('currentUser');
+                    if (currentUser) {
+                        this.showNotification('Данные мероприятий обновлены!', 'info');
+                        this.loadEvents();
+                    }
+                });
+
+                this.socket.on('eventReminder', (data) => {
+                    // Проверяем авторизацию перед показом напоминаний
+                    const currentUser = localStorage.getItem('currentUser');
+                    if (currentUser) {
+                        this.showNotification(`Напоминание: ${data.message}`, 'info');
+                    }
+                });
+            } else {
+                console.log('WebSocket недоступен (socket не определен в window), работаем в офлайн-режиме');
             }
-        });
-        
-        this.socket.on('eventReminder', (data) => {
-            // Проверяем авторизацию перед показом напоминаний
-            const currentUser = localStorage.getItem('currentUser');
-            if (currentUser) {
-                this.showNotification(`Напоминание: ${data.message}`, 'info');
-            }
-        });
-        
-    } catch (error) {
-        console.log('WebSocket недоступен, работаем в офлайн-режиме');
+        } catch (error) {
+            console.log('WebSocket недоступен, работаем в офлайн-режиме');
+        }
     }
 }
-}
-
-const eventsManager = new EventsManager();

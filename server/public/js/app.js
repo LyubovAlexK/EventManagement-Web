@@ -1,3 +1,4 @@
+// public/js/app.js
 // Главный файл приложения - Режим реального времени
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Event Management System initialized');
@@ -6,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Глобальные переменные
 let socket = null;
+let eventsManager = null; // Делаем глобальной, чтобы events.js мог к ней обращаться
 
 function initApp() {
     initWebSocket();
@@ -13,73 +15,77 @@ function initApp() {
     checkConnectionStatus();
     // Убираем автоматические уведомления
     // showWelcomeNotifications();
-    
+
     // Проверяем авторизацию и показываем/скрываем кнопку теста
-    checkAuthAndUpdateUI();
+    // Убираем проверку для кнопки теста, так как её больше нет
+    // checkAuthAndUpdateUI();
+
+    // Инициализируем EventsManager
+    eventsManager = new EventsManager();
 }
 
-function checkAuthAndUpdateUI() {
-    const currentUser = localStorage.getItem('currentUser');
-    const testBtn = document.getElementById('test-notifications-btn');
-    
-    if (currentUser && testBtn) {
-        testBtn.style.display = 'block';
-    } else if (testBtn) {
-        testBtn.style.display = 'none';
-    }
-}
-
-window.addEventListener('storage', function(e) {
-    if (e.key === 'currentUser') {
-        checkAuthAndUpdateUI();
-    }
-});
+// function checkAuthAndUpdateUI() {
+//     const currentUser = localStorage.getItem('currentUser');
+//     const testBtn = document.getElementById('test-notifications-btn');
+//
+//     if (currentUser && testBtn) {
+//         testBtn.style.display = 'block';
+//     } else if (testBtn) {
+//         testBtn.style.display = 'none';
+//     }
+// }
+//
+// window.addEventListener('storage', function(e) {
+//     if (e.key === 'currentUser') {
+//         checkAuthAndUpdateUI();
+//     }
+// });
 
 // Инициализация WebSocket соединения
 function initWebSocket() {
     try {
         socket = io();
-        
+
         socket.on('connect', () => {
             console.log('✅ Connected to server');
             updateConnectionStatus(true);
             showRealtimeNotification('✅ Подключение к серверу установлено');
         });
-        
+
         socket.on('disconnect', () => {
             console.log('❌ Disconnected from server');
             updateConnectionStatus(false);
             showRealtimeNotification('❌ Потеряно соединение с сервером');
         });
-        
+
         socket.on('connect_error', (error) => {
             console.log('❌ Connection error:', error);
             updateConnectionStatus(false);
             showRealtimeNotification('❌ Ошибка подключения к серверу');
         });
-        
+
         // Реальное время - обновление данных
         socket.on('eventsUpdated', (data) => {
             console.log('🔄 Real-time events update:', data);
             showRealtimeNotification('📊 Данные мероприятий обновлены!');
-            
+
             // Автоматически обновляем список мероприятий
-            if (window.eventsManager) {
+            if (eventsManager) {
                 eventsManager.loadEvents();
             }
         });
-        
+
         socket.on('dataChanged', (data) => {
             console.log('📊 Data changed:', data);
             showRealtimeNotification(`🔄 Изменения в ${data.table}: ${data.action}`);
         });
-        
+
         // Уведомления о приближающихся мероприятиях
         socket.on('eventReminder', (data) => {
             console.log('⏰ Event reminder:', data);
             showEventReminder(data);
         });
-        
+
     } catch (error) {
         console.error('WebSocket initialization error:', error);
         showRealtimeNotification('⚠️ Режим офлайн: демо-данные');
@@ -88,7 +94,7 @@ function initWebSocket() {
 
 // Показ приветственных уведомлений при загрузке
 function showWelcomeNotifications() {
-    
+
 }
 
 // Показ уведомлений реального времени
@@ -110,7 +116,7 @@ function showRealtimeNotification(message) {
         `;
         document.body.appendChild(notificationsContainer);
     }
-    
+
     const notification = document.createElement('div');
     notification.className = 'realtime-notification';
     notification.innerHTML = `
@@ -119,7 +125,7 @@ function showRealtimeNotification(message) {
             <button class="notification-close">×</button>
         </div>
     `;
-    
+
     notification.style.cssText = `
         background: #10B981;
         color: white;
@@ -134,7 +140,7 @@ function showRealtimeNotification(message) {
         justify-content: space-between;
         gap: 10px;
     `;
-    
+
     const closeBtn = notification.querySelector('.notification-close');
     closeBtn.style.cssText = `
         background: none;
@@ -145,14 +151,14 @@ function showRealtimeNotification(message) {
         padding: 0;
         margin-left: 10px;
     `;
-    
+
     closeBtn.addEventListener('click', () => {
         notification.style.animation = 'slideOutRight 0.3s ease-in';
         setTimeout(() => notification.remove(), 300);
     });
-    
+
     notificationsContainer.appendChild(notification);
-    
+
     // Автоматическое скрытие через 5 секунд
     setTimeout(() => {
         if (notification.parentElement) {
@@ -180,13 +186,13 @@ function showEventReminder(eventData) {
         `;
         document.body.appendChild(remindersContainer);
     }
-    
+
     const reminder = document.createElement('div');
     reminder.className = 'event-reminder';
-    
+
     let icon = '⏰';
     let bgColor = '#F59E0B';
-    
+
     if (eventData.daysLeft === 1) {
         icon = '🚨';
         bgColor = '#EF4444';
@@ -197,7 +203,7 @@ function showEventReminder(eventData) {
         icon = '📅';
         bgColor = '#3B82F6';
     }
-    
+
     reminder.innerHTML = `
         <div class="reminder-content">
             <span class="reminder-icon">${icon}</span>
@@ -209,7 +215,7 @@ function showEventReminder(eventData) {
             <button class="reminder-close">×</button>
         </div>
     `;
-    
+
     reminder.style.cssText = `
         background: ${bgColor};
         color: white;
@@ -221,7 +227,7 @@ function showEventReminder(eventData) {
         animation: slideInLeft 0.3s ease-out;
         max-width: 350px;
     `;
-    
+
     const closeBtn = reminder.querySelector('.reminder-close');
     closeBtn.style.cssText = `
         background: none;
@@ -232,14 +238,14 @@ function showEventReminder(eventData) {
         padding: 0;
         margin-left: 10px;
     `;
-    
+
     closeBtn.addEventListener('click', () => {
         reminder.style.animation = 'slideOutLeft 0.3s ease-in';
         setTimeout(() => reminder.remove(), 300);
     });
-    
+
     remindersContainer.appendChild(reminder);
-    
+
     // Автоматическое скрытие через 10 секунд
     setTimeout(() => {
         if (reminder.parentElement) {
@@ -249,43 +255,43 @@ function showEventReminder(eventData) {
     }, 10000);
 }
 
-// Функция для тестирования уведомлений
-function testNotifications() {
-    const currentUser = localStorage.getItem('currentUser');
-    if (!currentUser) {
-        showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
-        return;
-    }
-    
-    // Тестовые уведомления (оставляем только эти)
-    showEventReminder({
-        eventId: 1,
-        eventName: "Техническая конференция 2024",
-        startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        daysLeft: 1,
-        message: "Техническая конференция 2024 начинается ЗАВТРА!"
-    });
-    
-    setTimeout(() => {
-        showEventReminder({
-            eventId: 2,
-            eventName: "Корпоративный тренинг",
-            startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-            daysLeft: 2,
-            message: "Корпоративный тренинг через 2 дня!"
-        });
-    }, 1000);
-    
-    setTimeout(() => {
-        showEventReminder({
-            eventId: 3,
-            eventName: "Стратегическое планирование",
-            startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-            daysLeft: 3,
-            message: "Стратегическое планирование через 3 дня!"
-        });
-    }, 2000);
-}
+// Функция для тестирования уведомлений - УБРАНА
+// function testNotifications() {
+//     const currentUser = localStorage.getItem('currentUser');
+//     if (!currentUser) {
+//         showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
+//         return;
+//     }
+//
+//     // Тестовые уведомления (оставляем только эти)
+//     showEventReminder({
+//         eventId: 1,
+//         eventName: "Техническая конференция 2024",
+//         startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+//         daysLeft: 1,
+//         message: "Техническая конференция 2024 начинается ЗАВТРА!"
+//     });
+//
+//     setTimeout(() => {
+//         showEventReminder({
+//             eventId: 2,
+//             eventName: "Корпоративный тренинг",
+//             startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+//             daysLeft: 2,
+//             message: "Корпоративный тренинг через 2 дня!"
+//         });
+//     }, 1000);
+//
+//     setTimeout(() => {
+//         showEventReminder({
+//             eventId: 3,
+//             eventName: "Стратегическое планирование",
+//             startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+//             daysLeft: 3,
+//             message: "Стратегическое планирование через 3 дня!"
+//         });
+//     }, 2000);
+// }
 
 // Обновление статуса подключения
 function updateConnectionStatus(connected) {
@@ -330,19 +336,19 @@ function initGlobalHandlers() {
     // Закрытие модальных окон по клику вне области
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal')) {
-            if (window.eventsManager) {
+            if (eventsManager) {
                 eventsManager.closeModals();
             }
         }
     });
-    
+
     // Предотвращение закрытия при клике внутри модального окна
     document.querySelectorAll('.modal-content').forEach(content => {
         content.addEventListener('click', (e) => {
             e.stopPropagation();
         });
     });
-    
+
     // Обработка ошибок загрузки изображений
     document.addEventListener('error', (e) => {
         if (e.target.tagName === 'IMG') {
@@ -350,60 +356,39 @@ function initGlobalHandlers() {
             e.target.alt = 'Изображение не загружено';
         }
     }, true);
-    
+
     // Глобальная обработка ошибок
     window.addEventListener('error', (e) => {
         console.error('Global error:', e.error);
     });
-    
+
     // Обработка обещаний без catch
     window.addEventListener('unhandledrejection', (e) => {
         console.error('Unhandled promise rejection:', e.reason);
     });
-    
+
     // Адаптация для мобильных устройств
     window.addEventListener('resize', handleResize);
     handleResize();
-    
-    // Добавляем кнопку тестирования уведомлений в интерфейс
-    addTestNotificationButton();
+
+    // Добавляем кнопку тестирования уведомлений в интерфейс - УБРАНА
+    // addTestNotificationButton();
 }
 
-// Добавление кнопки тестирования уведомлений
-function addTestNotificationButton() {
-    const testBtn = document.createElement('button');
-    testBtn.textContent = '🔔 Тест уведомлений';
-    testBtn.id = 'test-notifications-btn';
-    testBtn.style.cssText = `
-        position: fixed;
-        bottom: 70px;
-        right: 20px;
-        padding: 10px 15px;
-        background: #6F51FF;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 999; // Уменьшаем z-index чтобы не перекрывал модальные окна
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        display: none; // Скрываем по умолчанию
-    `;
-    
-    testBtn.addEventListener('click', testNotifications);
-    document.body.appendChild(testBtn);
-}
+// Добавление кнопки тестирования уведомлений - УБРАНА
+// function addTestNotificationButton() {
+//
+// }
 
 // Обработка изменения размера окна
 function handleResize() {
     const isMobile = window.innerWidth <= 768;
     document.body.classList.toggle('mobile-view', isMobile);
-    
+
     // Адаптируем позиции уведомлений для мобильных
     const notificationsContainer = document.getElementById('notifications-container');
     const remindersContainer = document.getElementById('reminders-container');
-    
+
     if (isMobile) {
         if (notificationsContainer) {
             notificationsContainer.style.top = '10px';
@@ -508,7 +493,7 @@ style.textContent = `
             opacity: 1;
         }
     }
-    
+
     @keyframes slideOutRight {
         from {
             transform: translateX(0);
@@ -519,7 +504,7 @@ style.textContent = `
             opacity: 0;
         }
     }
-    
+
     @keyframes slideInLeft {
         from {
             transform: translateX(-100%);
@@ -530,7 +515,7 @@ style.textContent = `
             opacity: 1;
         }
     }
-    
+
     @keyframes slideOutLeft {
         from {
             transform: translateX(0);
@@ -541,7 +526,7 @@ style.textContent = `
             opacity: 0;
         }
     }
-    
+
     .notification-content,
     .reminder-content {
         display: flex;
@@ -549,22 +534,22 @@ style.textContent = `
         gap: 10px;
         width: 100%;
     }
-    
+
     .reminder-text {
         flex: 1;
     }
-    
+
     .reminder-text strong {
         display: block;
         margin-bottom: 5px;
         font-size: 13px;
     }
-    
+
     .reminder-text small {
         opacity: 0.9;
         font-size: 11px;
     }
-    
+
     /* Мобильные стили для уведомлений */
     @media (max-width: 768px) {
         #notifications-container,
@@ -574,7 +559,7 @@ style.textContent = `
             right: 10px !important;
             max-width: calc(100% - 20px) !important;
         }
-        
+
         .realtime-notification,
         .event-reminder {
             max-width: 100% !important;
