@@ -1,9 +1,10 @@
+// server/app.js
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers, getDemoEvents } = require('./database');
+const { connectDB, query, getDemoCategories, getDemoVenues, getDemoUsers, getDemoEvents } = require('./database'); // Убедитесь, что путь к database.js правильный
 
 const app = express();
 const server = http.createServer(app);
@@ -24,9 +25,6 @@ app.use(express.json());
 // Обслуживание статических файлов ИЗ ПАПКИ 'public'
 // Это ключевое изменение: теперь Express ищет CSS, JS, изображения и index.html в папке 'public'
 app.use(express.static(path.join(__dirname, 'public')));
-// app.use('/img', express.static(path.join(__dirname, 'img'))); // Убрано, т.к. img теперь в public/img
-// app.use('/js', express.static(path.join(__dirname, 'js')));   // Убрано, т.к. js теперь в public/js
-// app.use('/css', express.static(path.join(__dirname, 'css'))); // Убрано, т.к. css теперь в public/css
 
 // Middleware для логирования запросов
 app.use((req, res, next) => {
@@ -67,12 +65,12 @@ async function checkAndSendReminders(socket = null) {
     try {
         const events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
         const now = new Date();
-        
+
         events.forEach(event => {
             const eventDate = new Date(event.DateTimeStart);
             const timeDiff = eventDate.getTime() - now.getTime();
             const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-            
+
             if (daysDiff <= 3 && daysDiff > 0) {
                 const reminderData = {
                     eventId: event.EventId,
@@ -81,7 +79,7 @@ async function checkAndSendReminders(socket = null) {
                     daysLeft: daysDiff,
                     message: `"${event.EventName}" ${getReminderMessage(daysDiff)}`
                 };
-                
+
                 if (socket) {
                     // Отправляем только конкретному клиенту
                     socket.emit('eventReminder', reminderData);
@@ -105,7 +103,7 @@ io.on('connection', (socket) => {
     });
 
     // Отправляем приветственное сообщение
-    socket.emit('connected', { 
+    socket.emit('connected', {
         message: 'Connected to real-time server',
         clientId: socket.id,
         timestamp: new Date().toISOString()
@@ -114,7 +112,7 @@ io.on('connection', (socket) => {
     // Обработка запросов от клиента
     socket.on('requestData', async (data) => {
         console.log('📥 Data request from client:', socket.id, data);
-        
+
         try {
             let responseData;
             switch (data.type) {
@@ -130,7 +128,7 @@ io.on('connection', (socket) => {
                 default:
                     responseData = { error: 'Unknown data type' };
             }
-            
+
             socket.emit('dataResponse', {
                 requestId: data.requestId,
                 data: responseData
@@ -183,8 +181,8 @@ io.on('connection', (socket) => {
 // API Routes
 
 // Корневой маршрут - отдаем index.html из папки 'public'
-app.get('/', (req, res) => { 
-    res.sendFile(path.join(__dirname, 'public', 'index.html')); 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Статус сервера
@@ -203,33 +201,29 @@ app.get('/api/status', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { login, password } = req.body;
-        
+
         console.log(`🔐 Login attempt: ${login}`);
-        
-        // Демо-логика аутентификации
+
+        // Попытка найти пользователя в реальной БД
         let user;
         try {
             const users = await query(`
-                SELECT u.*, r.RoleName 
-                FROM Users u 
-                INNER JOIN Role r ON u.RoleId = r.RoleId 
-                WHERE u.Login = '${login}' AND u.Password = '${password}'
-            `);
+                SELECT u.*, r.RoleName
+                FROM Users u
+                INNER JOIN Role r ON u.RoleId = r.RoleId
+                WHERE u.Login = ? AND u.Password = ?
+            `, [login, password]); // Используем параметризованные запросы для безопасности
             user = users.length > 0 ? users[0] : null;
-        } catch (error) {
-            // В демо-режиме используем локальные данные
+        } catch (dbError) {
+            console.log('Database query failed, switching to demo data:', dbError.message);
+            // В случае ошибки запроса к БД, используем демо-данные
             user = getDemoUsers().find(u => u.Login === login && u.Password === password);
-            
-            // Если не нашли, используем демо-пользователя
-            if (!user) {
-                user = getDemoUsers().find(u => u.Login === 'demo' && u.Password === 'demo');
-            }
         }
-        
+
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Неверный логин или пароль'
+                message: 'Пользователь не найден или неверный пароль'
             });
         }
 
@@ -244,16 +238,16 @@ app.post('/api/auth/login', async (req, res) => {
         res.json({
             success: true,
             user: user,
-            demo: true
+            demo: true // Устанавливаем demo: true, так как используем демо-режим
         });
-        
+
         // Уведомляем о успешной авторизации
         notifyClients('userLoggedIn', {
             userId: user.UserId,
             userName: `${user.LastName} ${user.Name}`,
             timestamp: new Date().toISOString()
         });
-        
+
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({
@@ -283,14 +277,14 @@ app.post('/api/events', async (req, res) => {
             Status, EstimatedBudget, MaxNumOfGuests, CategoryId,
             VenueId
         } = req.body;
-        
+
         console.log('📝 New event creation:', EventName);
-        
+
         // В демо-режиме просто логируем
         const newEventId = Date.now();
-        
+
         // Уведомляем всех клиентов о новом мероприятии
-        notifyClients('eventsUpdated', { 
+        notifyClients('eventsUpdated', {
             action: 'added',
             eventName: EventName,
             eventId: newEventId,
@@ -309,18 +303,18 @@ app.post('/api/events', async (req, res) => {
                 UserName: 'Текущий пользователь'
             }
         });
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Мероприятие добавлено',
             eventId: newEventId,
             demo: true
         });
-        
+
     } catch (error) {
         console.error('Add event error:', error);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: 'Ошибка при добавлении мероприятия'
         });
     }
@@ -331,26 +325,26 @@ app.put('/api/events/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const eventData = req.body;
-        
+
         console.log(`✏️ Event update for ID ${id}:`, eventData.EventName);
-        
+
         // Уведомляем всех клиентов об обновлении мероприятия
-        notifyClients('eventsUpdated', { 
+        notifyClients('eventsUpdated', {
             action: 'updated',
             eventId: id,
             eventData: eventData
         });
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Мероприятие обновлено',
             demo: true
         });
-        
+
     } catch (error) {
         console.error('Update event error:', error);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: 'Ошибка при обновлении мероприятия'
         });
     }
@@ -361,25 +355,25 @@ app.put('/api/events/:id/budget', async (req, res) => {
     try {
         const { id } = req.params;
         const { ActualBudget } = req.body;
-        
+
         console.log(`💰 Budget update for event ${id}: ${ActualBudget}`);
-        
-        notifyClients('eventsUpdated', { 
-            action: 'budget_updated', 
+
+        notifyClients('eventsUpdated', {
+            action: 'budget_updated',
             eventId: id,
             newBudget: ActualBudget
         });
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Бюджет обновлен',
             demo: true
         });
-        
+
     } catch (error) {
         console.error('Budget update error:', error);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: 'Ошибка при обновлении бюджета'
         });
     }
@@ -431,8 +425,8 @@ app.get('/api/managers', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const users = await query(`
-            SELECT u.*, r.RoleName 
-            FROM Users u 
+            SELECT u.*, r.RoleName
+            FROM Users u
             INNER JOIN Role r ON u.RoleId = r.RoleId
         `);
         res.json(users);
@@ -452,8 +446,8 @@ app.use('/api/*', (req, res) => {
 });
 
 // Для всех остальных маршрутов отдаем index.html из папки 'public' (для SPA)
-app.get('*', (req, res) => { 
-    res.sendFile(path.join(__dirname, 'public', 'index.html')); 
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Обработка ошибок

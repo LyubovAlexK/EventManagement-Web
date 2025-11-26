@@ -311,6 +311,7 @@ class EventsManager {
         const formData = new FormData(e.target);
         const eventData = Object.fromEntries(formData.entries());
         const mode = e.target.dataset.mode;
+        const eventId = e.target.dataset.eventId; // Получаем ID из атрибута формы
 
         // Валидация
         if (!this.validateEventForm(eventData)) {
@@ -332,14 +333,13 @@ class EventsManager {
                 document.dispatchEvent(new CustomEvent('eventAdded', {
                     detail: eventData
                 }));
-            } else {
-                const eventId = e.target.dataset.eventId;
-                response = await fetch(`/api/events/${eventId}`, {
+            } else { // mode === 'edit'
+                response = await fetch(`/api/events/${eventId}`, { // Передаём ID в URL
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(eventData)
+                    body: JSON.stringify(eventData) // Отправляем только изменённые данные
                 });
 
                 // Создаем событие для реального времени
@@ -353,13 +353,14 @@ class EventsManager {
             if (result.success) {
                 this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'}`, 'success');
                 this.closeModals();
-                this.loadEvents();
+                this.loadEvents(); // Обновляем данные из API
 
-                // Уведомляем через WebSocket
+                // Уведомляем через WebSocket ПОСЛЕ обновления интерфейса
                 if (this.socket) {
                     this.socket.emit('eventChanged', {
                         action: mode === 'add' ? 'added' : 'updated',
-                        event: eventData
+                        event: eventData,
+                        eventId: result.eventId || eventId // Возвращаем ID из ответа или из формы
                     });
                 }
             } else {
@@ -368,7 +369,7 @@ class EventsManager {
         } catch (error) {
             this.showNotification('Ошибка подключения к серверу. Данные сохранены локально.', 'info');
             this.closeModals();
-            this.loadEvents();
+            this.loadEvents(); // Обновляем данные из API или демо-данных
         }
     }
 
@@ -572,7 +573,7 @@ class EventsManager {
                     const currentUser = localStorage.getItem('currentUser');
                     if (currentUser) {
                         this.showNotification('Данные мероприятий обновлены!', 'info');
-                        this.loadEvents();
+                        this.loadEvents(); // Обновляем данные при получении события
                     }
                 });
 
@@ -591,3 +592,6 @@ class EventsManager {
         }
     }
 }
+
+// Инициализация происходит в app.js после DOMContentLoaded
+// const eventsManager = new EventsManager(); // Убираем из events.js

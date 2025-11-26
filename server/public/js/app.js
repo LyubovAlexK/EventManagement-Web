@@ -16,30 +16,9 @@ function initApp() {
     // Убираем автоматические уведомления
     // showWelcomeNotifications();
 
-    // Проверяем авторизацию и показываем/скрываем кнопку теста
-    // Убираем проверку для кнопки теста, так как её больше нет
-    // checkAuthAndUpdateUI();
-
     // Инициализируем EventsManager
     eventsManager = new EventsManager();
 }
-
-// function checkAuthAndUpdateUI() {
-//     const currentUser = localStorage.getItem('currentUser');
-//     const testBtn = document.getElementById('test-notifications-btn');
-//
-//     if (currentUser && testBtn) {
-//         testBtn.style.display = 'block';
-//     } else if (testBtn) {
-//         testBtn.style.display = 'none';
-//     }
-// }
-//
-// window.addEventListener('storage', function(e) {
-//     if (e.key === 'currentUser') {
-//         checkAuthAndUpdateUI();
-//     }
-// });
 
 // Инициализация WebSocket соединения
 function initWebSocket() {
@@ -255,44 +234,6 @@ function showEventReminder(eventData) {
     }, 10000);
 }
 
-// Функция для тестирования уведомлений - УБРАНА
-// function testNotifications() {
-//     const currentUser = localStorage.getItem('currentUser');
-//     if (!currentUser) {
-//         showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
-//         return;
-//     }
-//
-//     // Тестовые уведомления (оставляем только эти)
-//     showEventReminder({
-//         eventId: 1,
-//         eventName: "Техническая конференция 2024",
-//         startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-//         daysLeft: 1,
-//         message: "Техническая конференция 2024 начинается ЗАВТРА!"
-//     });
-//
-//     setTimeout(() => {
-//         showEventReminder({
-//             eventId: 2,
-//             eventName: "Корпоративный тренинг",
-//             startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-//             daysLeft: 2,
-//             message: "Корпоративный тренинг через 2 дня!"
-//         });
-//     }, 1000);
-//
-//     setTimeout(() => {
-//         showEventReminder({
-//             eventId: 3,
-//             eventName: "Стратегическое планирование",
-//             startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-//             daysLeft: 3,
-//             message: "Стратегическое планирование через 3 дня!"
-//         });
-//     }, 2000);
-// }
-
 // Обновление статуса подключения
 function updateConnectionStatus(connected) {
     const statusElement = document.getElementById('connection-status');
@@ -370,15 +311,7 @@ function initGlobalHandlers() {
     // Адаптация для мобильных устройств
     window.addEventListener('resize', handleResize);
     handleResize();
-
-    // Добавляем кнопку тестирования уведомлений в интерфейс - УБРАНА
-    // addTestNotificationButton();
 }
-
-// Добавление кнопки тестирования уведомлений - УБРАНА
-// function addTestNotificationButton() {
-//
-// }
 
 // Обработка изменения размера окна
 function handleResize() {
