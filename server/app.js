@@ -62,36 +62,42 @@ function notifyClients(event, data) {
 
 // Функция для проверки и отправки напоминаний
 async function checkAndSendReminders(socket = null) {
+    let events = [];
     try {
-        const events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
-        const now = new Date();
-
-        events.forEach(event => {
-            const eventDate = new Date(event.DateTimeStart);
-            const timeDiff = eventDate.getTime() - now.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-            if (daysDiff <= 3 && daysDiff > 0) {
-                const reminderData = {
-                    eventId: event.EventId,
-                    eventName: event.EventName,
-                    startTime: event.DateTimeStart,
-                    daysLeft: daysDiff,
-                    message: `"${event.EventName}" ${getReminderMessage(daysDiff)}`
-                };
-
-                if (socket) {
-                    // Отправляем только конкретному клиенту
-                    socket.emit('eventReminder', reminderData);
-                } else {
-                    // Отправляем всем клиентам
-                    notifyClients('eventReminder', reminderData);
-                }
-            }
-        });
+        // Сначала пытаемся получить данные из реальной БД
+        events = await query('SELECT * FROM Event WHERE Status = "Согласован"');
     } catch (error) {
-        console.error('Error checking event reminders:', error);
+        console.error('Error fetching events for reminders from DB:', error);
+        console.log('Switching to demo events for reminders');
+        // Если ошибка, используем демо-данные
+        events = getDemoEvents().filter(e => e.Status === "Согласован");
     }
+
+    const now = new Date();
+
+    events.forEach(event => {
+        const eventDate = new Date(event.DateTimeStart);
+        const timeDiff = eventDate.getTime() - now.getTime();
+        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+        if (daysDiff <= 3 && daysDiff > 0) {
+            const reminderData = {
+                eventId: event.EventId,
+                eventName: event.EventName,
+                startTime: event.DateTimeStart,
+                daysLeft: daysDiff,
+                message: `"${event.EventName}" ${getReminderMessage(daysDiff)}`
+            };
+
+            if (socket) {
+                // Отправляем только конкретному клиенту
+                socket.emit('eventReminder', reminderData);
+            } else {
+                // Отправляем всем клиентам
+                notifyClients('eventReminder', reminderData);
+            }
+        }
+    });
 }
 
 // Socket.IO обработчики
@@ -131,7 +137,7 @@ io.on('connection', (socket) => {
 
             socket.emit('dataResponse', {
                 requestId: data.requestId,
-                data: responseData
+                 responseData
             });
         } catch (error) {
             socket.emit('error', {
@@ -215,7 +221,7 @@ app.post('/api/auth/login', async (req, res) => {
             `, [login, password]); // Используем параметризованные запросы для безопасности
             user = users.length > 0 ? users[0] : null;
         } catch (dbError) {
-            console.log('Database query failed, switching to demo data:', dbError.message);
+            console.log('Database query failed, switching to demo ', dbError.message);
             // В случае ошибки запроса к БД, используем демо-данные
             user = getDemoUsers().find(u => u.Login === login && u.Password === password);
         }

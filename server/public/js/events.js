@@ -97,8 +97,8 @@ class EventsManager {
                 EventId: 1,
                 EventName: "Техническая конференция 2024",
                 Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
-                DateTimeStart: new Date('2024-12-10T09:00:00'),
-                DateTimeFinish: new Date('2024-12-12T18:00:00'),
+                DateTimeStart: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
+                DateTimeFinish: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), // 8 часов спустя
                 CategoryName: "Конференция",
                 VenueName: "Конференц-зал А",
                 UserName: "Иванов Иван",
@@ -112,12 +112,12 @@ class EventsManager {
                 EventId: 2,
                 EventName: "Корпоративный тренинг",
                 Description: "Тренинг по командообразованию и эффективной коммуникации для сотрудников",
-                DateTimeStart: new Date('2024-12-15T09:00:00'),
-                DateTimeFinish: new Date('2024-12-15T17:00:00'),
+                DateTimeStart: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Через 1 день
+                DateTimeFinish: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000),
                 CategoryName: "Тренинг",
                 VenueName: "Переговорная Б",
                 UserName: "Петрова Анна",
-                Status: "В обработке",
+                Status: "Согласован",
                 EstimatedBudget: 50000,
                 ActualBudget: 0,
                 MaxNumOfGuests: 25,
@@ -127,8 +127,8 @@ class EventsManager {
                 EventId: 3,
                 EventName: "Веб-приложение для управления мероприятиями",
                 Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
-                DateTimeStart: new Date('2024-12-01T10:00:00'),
-                DateTimeFinish: new Date('2024-12-01T12:00:00'),
+                DateTimeStart: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Через 5 дней
+                DateTimeFinish: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
                 CategoryName: "Презентация",
                 VenueName: "Онлайн",
                 UserName: "Кремлакова Любовь",
