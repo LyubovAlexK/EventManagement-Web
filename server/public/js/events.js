@@ -27,8 +27,8 @@ class EventsManager {
         document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditEventModal());
         document.getElementById('refresh-btn').addEventListener('click', () => this.loadEvents());
 
-        // Новый обработчик для кнопки "Проверка на скорые мероприятия"
-        document.getElementById('check-events-btn').addEventListener('click', () => this.checkEventsBtnClick());
+        // Новый обработчик для кнопки "Проверка на скорые мероприятия" - УБРАН, так как он теперь в app.js
+        // document.getElementById('check-events-btn').addEventListener('click', () => this.checkEventsBtnClick());
 
         document.getElementById('search-events').addEventListener('input', (e) => {
             this.filterEvents(e.target.value);
@@ -52,24 +52,8 @@ class EventsManager {
         this.bindRealTimeEvents();
     }
 
-    // Новая функция для обработки нажатия кнопки "Проверка на скорые мероприятия"
-    // Теперь отправляет запрос на сервер без проверки авторизации или подключения
-    checkEventsBtnClick() {
-        // Убираем проверку currentUser и подключения
-        // const currentUser = localStorage.getItem('currentUser');
-        // if (!currentUser) {
-        //     this.showNotification('⚠️ Для проверки мероприятий необходимо авторизоваться', 'info');
-        //     return;
-        // }
-
-        if (this.socket && this.socket.connected) {
-            this.socket.emit('requestEventReminders');
-            this.showNotification('🔍 Проверка скорых мероприятий запущена...', 'info');
-        } else {
-            // Показываем уведомление, даже если подключение потеряно
-            this.showNotification('❌ Нет подключения к серверу. Попробуйте позже.', 'error');
-        }
-    }
+    // Убираем функцию checkEventsBtnClick, так как она перенесена в app.js
+    // checkEventsBtnClick() { ... }
 
     bindRealTimeEvents() {
         // Обработчики для мгновенного обновления данных

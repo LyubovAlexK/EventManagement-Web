@@ -34,13 +34,15 @@ function initWebSocket() {
         socket.on('disconnect', () => {
             console.log('❌ Disconnected from server');
             updateConnectionStatus(false);
-            showRealtimeNotification('❌ Потеряно соединение с сервером');
+            // Убираем показ уведомления об ошибке подключения здесь
+            // showRealtimeNotification('❌ Потеряно соединение с сервером');
         });
 
         socket.on('connect_error', (error) => {
             console.log('❌ Connection error:', error);
             updateConnectionStatus(false);
-            showRealtimeNotification('❌ Ошибка подключения к серверу');
+            // Убираем показ уведомления об ошибке подключения здесь
+            // showRealtimeNotification('❌ Ошибка подключения к серверу');
         });
 
         // Реальное время - обновление данных
@@ -67,7 +69,8 @@ function initWebSocket() {
 
     } catch (error) {
         console.error('WebSocket initialization error:', error);
-        showRealtimeNotification('⚠️ Режим офлайн: демо-данные');
+        // Убираем показ уведомления об офлайн-режиме
+        // showRealtimeNotification('⚠️ Режим офлайн: демо-данные');
     }
 }
 
@@ -234,21 +237,44 @@ function showEventReminder(eventData) {
     }, 10000);
 }
 
-// Функция для тестирования уведомлений - теперь отправляет запрос на сервер
-function testNotifications() {
-    // Убираем проверку currentUser
+// Функция для показа тестовых напоминаний (выводит уведомления без проверок)
+function showTestReminders() {
+    // Убираем проверку currentUser и подключения
     // const currentUser = localStorage.getItem('currentUser');
     // if (!currentUser) {
     //     showRealtimeNotification('⚠️ Для тестирования уведомлений необходимо авторизоваться');
     //     return;
     // }
 
-    if (socket && socket.connected) {
-        socket.emit('requestEventReminders');
-        showRealtimeNotification('🔍 Проверка скорых мероприятий запущена...');
-    } else {
-        showRealtimeNotification('❌ Нет подключения к серверу. Попробуйте позже.');
-    }
+    // Выводим тестовые уведомления
+    showEventReminder({
+        eventId: 1,
+        eventName: "Техническая конференция 2024",
+        startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Через 3 дня
+        daysLeft: 3,
+        message: `"Техническая конференция 2024" через 3 дня!`
+    });
+
+    setTimeout(() => {
+        showEventReminder({
+            eventId: 2,
+            eventName: "Корпоративный тренинг",
+            startTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Через 1 день
+            daysLeft: 1,
+            message: `"Корпоративный тренинг" начинается ЗАВТРА!`
+        });
+    }, 1000); // С задержкой 1 секунда
+
+    // Можно добавить еще одно уведомление, если нужно
+    // setTimeout(() => {
+    //     showEventReminder({
+    //         eventId: 3,
+    //         eventName: "Стратегическое планирование",
+    //         startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // Через 2 дня
+    //         daysLeft: 2,
+    //         message: `"Стратегическое планирование" через 2 дня!`
+    //     });
+    // }, 2000); // С задержкой 2 секунды
 }
 
 // Обновление статуса подключения
@@ -329,11 +355,11 @@ function initGlobalHandlers() {
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    // Привязываем тестовую функцию к кнопке, если она есть в HTML (например, для отладки)
-    // const testBtn = document.getElementById('test-notifications-btn');
-    // if (testBtn) {
-    //     testBtn.addEventListener('click', testNotifications);
-    // }
+    // Привязываем тестовую функцию к кнопке "Проверка на скорые мероприятия"
+    const checkEventsBtn = document.getElementById('check-events-btn');
+    if (checkEventsBtn) {
+        checkEventsBtn.addEventListener('click', showTestReminders);
+    }
 }
 
 // Обработка изменения размера окна
