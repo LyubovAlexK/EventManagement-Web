@@ -14,7 +14,7 @@ class EventsManager {
 
     bindEvents() {
         // Обработчики для кнопок навигации
-        document.querySelectorAll('.nav-btn').forEach(btn => {
+        document.querySelectorAll('.sidebar-btn').forEach(btn => {
             if (btn.dataset.panel) {
                 btn.addEventListener('click', (e) => {
                     const panel = e.currentTarget.dataset.panel;
@@ -266,8 +266,8 @@ class EventsManager {
             const card = document.createElement('div');
             card.className = 'event-card';
             
-            // Определяем цвет по статусу
-            let statusColor = '#F59E0B'; // По умолчанию - обработка
+            // Определяем цвет по статусу (сохраняем оригинальные цвета)
+            let statusColor = '#F59E0B'; // В обработке
             if (event.Status === 'Согласован') statusColor = '#22C55E';
             if (event.Status === 'Ждет утверждения') statusColor = '#3B82F6';
 
@@ -501,7 +501,7 @@ class EventsManager {
         document.getElementById('current-panel-title').textContent = titles[panelName] || 'Панель';
 
         // Обновляем активную кнопку в навигации
-        document.querySelectorAll('.nav-btn').forEach(btn => {
+        document.querySelectorAll('.sidebar-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         const activeBtn = document.querySelector(`[data-panel="${panelName}"]`);

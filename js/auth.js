@@ -152,7 +152,7 @@ class AuthManager {
         if (titleElement) titleElement.textContent = 'Мероприятия (таблица)';
         
         // Активируем кнопку мероприятий в навигации
-        document.querySelectorAll('.nav-btn').forEach(btn => {
+        document.querySelectorAll('.sidebar-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         const eventsBtn = document.querySelector('[data-panel="events"]');
