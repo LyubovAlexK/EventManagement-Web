@@ -3,252 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>АИС Управление мероприятиями</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Event Management System - Demo</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Страница аутентификации -->
+    <!-- Страница авторизации -->
     <div id="auth-page" class="page active">
         <div class="auth-container">
             <div class="auth-header">
-                <h1 class="app-title">АИС Мероприятия</h1>
+                <h1>Event Management System</h1>
+                <p>Демо-режим</p>
             </div>
-
-            <div class="auth-title">
-                <h2>Войти в свой аккаунт</h2>
-            </div>
-
             <div class="auth-form">
-                <div class="form-group">
-                    <label for="login">Логин</label>
-                    <input type="text" id="login" class="form-input" placeholder="Введите логин">
+                <input type="text" id="login" placeholder="Логин" value="demo">
+                <input type="password" id="password" placeholder="Пароль" value="demo">
+                <button id="login-btn">Войти</button>
+                <div class="demo-info">
+                    <p><strong>Демо-доступ:</strong></p>
+                    <p>Логин: <code>demo</code> / Пароль: <code>demo</code></p>
+                    <p>Логин: <code>ivanov</code> / Пароль: <code>123</code></p>
                 </div>
-
-                <div class="form-group">
-                    <label for="password">Пароль</label>
-                    <input type="password" id="password" class="form-input" placeholder="Введите пароль">
-                </div>
-
-                <button id="login-btn" class="btn-primary">Войти</button>
-            </div>
-
-            <div class="auth-footer">
-                <p>Разработка структуры хранения информации для автоматизированной</p>
-                <p>системы планирования и проведения мероприятий</p>
             </div>
         </div>
     </div>
 
-    <!-- Главное приложение -->
+    <!-- Основное приложение -->
     <div id="app-page" class="page">
-        <div class="app-layout">
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <h2>АИС Мероприятия</h2>
-                </div>
-                <nav class="sidebar-nav">
-                    <button class="sidebar-btn" data-panel="events">
-    <img src="/img/events.png" alt="Мероприятия">
-    <span>Мероприятия</span>
-</button>
-<button class="sidebar-btn" data-panel="profile">
-    <img src="/img/profile.png" alt="Профиль">
-    <span>Профиль</span>
-</button>
-<button id="check-events-btn" class="sidebar-btn">
-    <span>Проверка на ближайшие мероприятия</span>
-</button>
-                </nav>
-                <div class="sidebar-footer">
-                    <div class="sidebar-footer">
-    <button id="logout-btn" class="sidebar-btn">
-        <img src="/img/logout.png" alt="Выход">
-        <span>Выход</span>
-    </button>
-</div>
+        <header class="app-header">
+            <div class="header-left">
+                <h1>Event Management System</h1>
+                <span class="demo-badge">Демо-режим</span>
+            </div>
+            <div class="header-right">
+                <span id="user-fullname">Пользователь</span>
+                <button id="logout-btn" class="btn-secondary">Выйти</button>
+            </div>
+        </header>
+
+        <nav class="main-nav">
+            <button class="nav-btn active" data-panel="events">
+                Мероприятия (таблица)
+            </button>
+            <button class="nav-btn" data-panel="events-cards">
+                Мероприятия (карточки)
+            </button>
+            <button class="nav-btn" data-panel="profile">
+                Профиль
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h2 id="current-panel-title">Мероприятия (таблица)</h2>
+                <div class="actions">
+                    <button id="add-event-btn" class="btn-primary">➕ Добавить</button>
+                    <button id="edit-event-btn" class="btn-secondary" disabled>✏️ Редактировать</button>
+                    <button id="refresh-btn" class="btn-secondary">🔄 Обновить</button>
+                    <button id="check-events-btn" class="btn-info">🔔 Тест напоминания</button>
                 </div>
             </div>
 
-            <!-- Основной контент -->
-            <div class="main-content">
-                <!-- Header -->
-                <header class="content-header">
-                    <h1 id="current-panel-title">Мероприятия</h1>
-                    <div class="header-actions">
-                        <button id="add-event-btn" class="btn-primary">
-                            <span>Добавить мероприятие</span>
-                        </button>
-                        <button id="edit-event-btn" class="btn-primary" disabled>
-                            <span>Редактировать</span>
-                        </button>
-                    </div>
-                </header>
-
-                <!-- Панель мероприятий -->
-                <div id="events-panel" class="content-panel active">
-                    <div class="panel-toolbar">
-                        <div class="search-container">
-                            <img src="/img/search.png" alt="Поиск">
-                            <input type="text" id="search-events" class="search-input" placeholder="Поиск мероприятий...">
-                        </div>
-                        <button id="refresh-btn" class="btn-secondary">
-                            Обновить данные
-                        </button>
-                    </div>
-
-                    <div class="table-container">
-                        <table id="events-table" class="data-table">
-                            <thead>
-                                <tr>
-                                    <th data-sort="EventId">Код события</th>
-                                    <th data-sort="EventName">Название события</th>
-                                    <th data-sort="Description">Описание</th>
-                                    <th data-sort="DateTimeStart">Дата начала</th>
-                                    <th data-sort="DateTimeFinish">Дата окончания</th>
-                                    <th data-sort="CategoryName">Категория</th>
-                                    <th data-sort="VenueName">Место проведения</th>
-                                    <th data-sort="Status">Статус</th>
-                                    <th data-sort="EstimatedBudget">Предполагаемый бюджет</th>
-                                    <th data-sort="ActualBudget">Реальный бюджет</th>
-                                    <th data-sort="MaxNumOfGuests">Макс. гостей</th>
-                                </tr>
-                            </thead>
-                            <tbody id="events-tbody">
-                                <!-- Данные загружаются через JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Панель мероприятий (таблица) -->
+            <div id="events-panel" class="content-panel active">
+                <div class="search-box">
+                    <input type="text" id="search-events" placeholder="Поиск мероприятий...">
                 </div>
+                <div class="table-container">
+                    <table id="events-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="EventId">ID</th>
+                                <th data-sort="EventName">Название</th>
+                                <th data-sort="Description">Описание</th>
+                                <th data-sort="DateTimeStart">Начало</th>
+                                <th data-sort="DateTimeFinish">Окончание</th>
+                                <th data-sort="CategoryName">Категория</th>
+                                <th data-sort="VenueName">Место</th>
+                                <th data-sort="Status">Статус</th>
+                                <th data-sort="EstimatedBudget">План. бюджет</th>
+                                <th data-sort="ActualBudget">Факт. бюджет</th>
+                                <th data-sort="MaxNumOfGuests">Гости</th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-tbody">
+                            <!-- Данные загружаются через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                <!-- Панель личного кабинета -->
-                <div id="profile-panel" class="content-panel">
-                    <div class="profile-container">
-                        <div class="profile-header">
-                            <h2 id="user-fullname"></h2>
-                            <p id="user-specialty" class="user-specialty"></p>
-                        </div>
+            <!-- Панель мероприятий (карточки) -->
+            <div id="events-cards-panel" class="content-panel">
+                <div class="events-cards-container" id="events-cards-container">
+                    <!-- Карточки загружаются через JavaScript -->
+                </div>
+            </div>
+
+            <!-- Панель профиля -->
+            <div id="profile-panel" class="content-panel">
+                <div class="profile-container">
+                    <div class="profile-card">
+                        <h3>Личная информация</h3>
                         <div class="profile-info">
-                            <div class="info-item">
-                                <label>Телефон:</label>
-                                <span id="user-phone"></span>
-                            </div>
-                            <div class="info-item">
-                                <label>Количество мероприятий:</label>
-                                <span id="user-events-count"></span>
-                            </div>
-                            <div class="info-item">
-                                <label>Мои мероприятия:</label>
-                                <ul id="user-events-list"></ul>
-                            </div>
+                            <p><strong>ФИО:</strong> <span id="user-fullname-profile">-</span></p>
+                            <p><strong>Должность:</strong> <span id="user-specialty">-</span></p>
+                            <p><strong>Телефон:</strong> <span id="user-phone">-</span></p>
+                            <p><strong>Мои мероприятия:</strong> <span id="user-events-count">0</span></p>
                         </div>
+                    </div>
+                    <div class="profile-events">
+                        <h3>Последние мероприятия</h3>
+                        <ul id="user-events-list">
+                            <!-- Список мероприятий пользователя -->
+                        </ul>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- Модальное окно добавления/редактирования мероприятия -->
     <div id="event-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-title">Добавление мероприятия</h3>
-                <button class="modal-close">&times;</button>
+                <button class="modal-close">×</button>
             </div>
-            <div class="modal-body">
-                <form id="event-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Название события *</label>
-                            <input type="text" name="EventName" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Статус *</label>
-                            <select name="Status" required>
-                                <option value="">Выберите статус</option>
-                                <option value="В обработке">В обработке</option>
-                                <option value="Согласован">Согласован</option>
-                                <option value="Ждет утверждения">Ждет утверждения</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Описание *</label>
-                        <textarea name="Description" rows="3" required></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Дата и время начала *</label>
-                            <input type="datetime-local" name="DateTimeStart" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Дата и время окончания *</label>
-                            <input type="datetime-local" name="DateTimeFinish" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Предполагаемый бюджет *</label>
-                            <input type="number" name="EstimatedBudget" step="0.01" min="0" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Максимальное количество гостей *</label>
-                            <input type="number" name="MaxNumOfGuests" min="1" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Категория *</label>
-                            <select name="CategoryId" required>
-                                <option value="">Выберите категорию</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Место проведения *</label>
-                            <select name="VenueId" required>
-                                <option value="">Выберите место</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary modal-cancel">Отмена</button>
-                        <button type="submit" class="btn-primary">Сохранить</button>
-                    </div>
-                </form>
-            </div>
+            <form id="event-form">
+                <div class="form-row">
+                    <input type="text" name="EventName" placeholder="Название мероприятия" required>
+                    <textarea name="Description" placeholder="Описание мероприятия"></textarea>
+                </div>
+                <div class="form-row">
+                    <input type="datetime-local" name="DateTimeStart" required>
+                    <input type="datetime-local" name="DateTimeFinish" required>
+                </div>
+                <div class="form-row">
+                    <select name="CategoryId" required>
+                        <option value="">Выберите категорию...</option>
+                    </select>
+                    <select name="VenueId" required>
+                        <option value="">Выберите место...</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <select name="Status" required>
+                        <option value="">Выберите статус...</option>
+                        <option value="В обработке">В обработке</option>
+                        <option value="Согласован">Согласован</option>
+                        <option value="Ждет утверждения">Ждет утверждения</option>
+                        <option value="Отменен">Отменен</option>
+                    </select>
+                    <input type="number" name="EstimatedBudget" placeholder="Предполагаемый бюджет" min="0">
+                </div>
+                <div class="form-row">
+                    <input type="number" name="MaxNumOfGuests" placeholder="Макс. количество гостей" min="1" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="modal-cancel">Отмена</button>
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <div id="budget-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Редактирование реального бюджета</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="budget-form">
-                    <div class="form-group">
-                        <label>Реальный бюджет</label>
-                        <input type="number" id="actual-budget" step="0.01" required>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary modal-cancel">Отмена</button>
-                        <button type="submit" class="btn-primary">Сохранить</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/events.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="auth.js"></script>
+    <script src="events.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

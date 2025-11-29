@@ -18,53 +18,6 @@ function initApp() {
     eventsManager = new EventsManager();
 }
 
-// Инициализация WebSocket соединения
-function initWebSocket() {
-    try {
-        socket = io();
-
-        socket.on('connect', () => {
-            console.log('✅ Connected to server');
-            updateConnectionStatus(true);
-        });
-
-        socket.on('disconnect', () => {
-            console.log('❌ Disconnected from server');
-            updateConnectionStatus(false);
-        });
-
-        socket.on('connect_error', (error) => {
-            console.log('❌ Connection error:', error);
-            updateConnectionStatus(false);
-        });
-
-        // Реальное время - обновление данных
-        socket.on('eventsUpdated', (data) => {
-            console.log('🔄 Real-time events update:', data);
-            showRealtimeNotification('📊 Данные мероприятий обновлены!');
-
-            // Автоматически обновляем список мероприятий
-            if (eventsManager) {
-                eventsManager.loadEvents();
-            }
-        });
-
-        socket.on('dataChanged', (data) => {
-            console.log('📊 Data changed:', data);
-            showRealtimeNotification(`🔄 Изменения в ${data.table}: ${data.action}`);
-        });
-
-        // Уведомления о приближающихся мероприятиях
-        socket.on('eventReminder', (data) => {
-            console.log('⏰ Event reminder:', data);
-            showEventReminder(data);
-        });
-
-    } catch (error) {
-        console.error('WebSocket initialization error:', error);
-    }
-}
-
 // Показ уведомлений реального времени
 function showRealtimeNotification(message) {
     // Создаем контейнер для уведомлений если его нет

@@ -27,31 +27,8 @@ class AuthManager {
             return;
         }
 
-        try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ login, password })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                this.currentUser = result.user;
-                this.showApp();
-                this.showMessage('Успешный вход!', 'success');
-                
-                // Полностью скрываем блок авторизации
-                this.hideAuthCompletely();
-            } else {
-                this.showMessage(result.message, 'error');
-            }
-        } catch (error) {
-            console.log('API недоступен, используем демо-режим');
-            this.useDemoMode(login, password);
-        }
+        // Демо-режим аутентификации
+        this.useDemoMode(login, password);
     }
 
     // Демо-режим аутентификации
@@ -103,7 +80,7 @@ class AuthManager {
         }
     }
 
-     showAuthCompletely() {
+    showAuthCompletely() {
         const authPage = document.getElementById('auth-page');
         if (authPage) {
             authPage.style.display = 'flex';
@@ -113,16 +90,17 @@ class AuthManager {
     logout() {
         this.currentUser = null;
         this.showAuth();
-        this.showAuthCompletely(); // Показываем форму авторизации
+        this.showAuthCompletely();
         this.showMessage('Вы вышли из системы', 'info');
         this.clearAllNotifications();
     }
-clearAllNotifications() {
-    const notifications = document.querySelectorAll('#notifications-container, #reminders-container, .realtime-notification, .event-reminder');
-    notifications.forEach(notification => {
-        notification.remove();
-    });
-}
+
+    clearAllNotifications() {
+        const notifications = document.querySelectorAll('#notifications-container, #reminders-container, .realtime-notification, .event-reminder');
+        notifications.forEach(notification => {
+            notification.remove();
+        });
+    }
 
     checkAuthStatus() {
         const savedUser = localStorage.getItem('currentUser');
@@ -130,7 +108,7 @@ clearAllNotifications() {
             const user = JSON.parse(savedUser);
             this.currentUser = user;
             this.showApp();
-            this.hideAuthCompletely(); // Скрываем авторизацию если пользователь уже вошел
+            this.hideAuthCompletely();
         }
     }
 
@@ -156,34 +134,37 @@ clearAllNotifications() {
         this.checkUserRole();
     }
 
-showEventsPanel() {
-    const eventsPanel = document.getElementById('events-panel');
-    const profilePanel = document.getElementById('profile-panel');
-    
-    // Скрываем все панели
-    if (eventsPanel) eventsPanel.classList.remove('active');
-    if (profilePanel) profilePanel.classList.remove('active');
-    
-    // Показываем только панель мероприятий
-    if (eventsPanel) eventsPanel.classList.add('active');
-    
-    // Обновляем заголовок
-    const titleElement = document.getElementById('current-panel-title');
-    if (titleElement) titleElement.textContent = 'Мероприятия';
-    
-    // Активируем кнопку мероприятий в сайдбаре
-    document.querySelectorAll('.sidebar-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    const eventsBtn = document.querySelector('[data-panel="events"]');
-    if (eventsBtn) eventsBtn.classList.add('active');
-}
+    showEventsPanel() {
+        const eventsPanel = document.getElementById('events-panel');
+        const eventsCardsPanel = document.getElementById('events-cards-panel');
+        const profilePanel = document.getElementById('profile-panel');
+        
+        // Скрываем все панели
+        if (eventsPanel) eventsPanel.classList.remove('active');
+        if (eventsCardsPanel) eventsCardsPanel.classList.remove('active');
+        if (profilePanel) profilePanel.classList.remove('active');
+        
+        // Показываем только панель мероприятий (таблицу)
+        if (eventsPanel) eventsPanel.classList.add('active');
+        
+        // Обновляем заголовок
+        const titleElement = document.getElementById('current-panel-title');
+        if (titleElement) titleElement.textContent = 'Мероприятия (таблица)';
+        
+        // Активируем кнопку мероприятий в навигации
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const eventsBtn = document.querySelector('[data-panel="events"]');
+        if (eventsBtn) eventsBtn.classList.add('active');
+    }
 
     updateUserProfile() {
         if (!this.currentUser) return;
 
         const fullName = `${this.currentUser.LastName} ${this.currentUser.Name} ${this.currentUser.MiddleName || ''}`.trim();
         document.getElementById('user-fullname').textContent = fullName;
+        document.getElementById('user-fullname-profile').textContent = fullName;
         document.getElementById('user-specialty').textContent = this.currentUser.Specialty || 'Менеджер';
         document.getElementById('user-phone').textContent = this.currentUser.Phone || 'Не указан';
         
@@ -207,7 +188,6 @@ showEventsPanel() {
     checkUserRole() {
         // Скрываем/показываем элементы в зависимости от роли
         const isManager = this.currentUser && this.currentUser.RoleName === 'Менеджер';
-        
         // Можно добавить дополнительную логику для разных ролей
     }
 
@@ -224,7 +204,7 @@ showEventsPanel() {
             const eventsList = document.getElementById('user-events-list');
             eventsList.innerHTML = '';
             
-            userEvents.forEach(event => {
+            userEvents.slice(0, 5).forEach(event => {
                 const li = document.createElement('li');
                 li.textContent = `${event.EventName} (${event.Status})`;
                 eventsList.appendChild(li);
@@ -242,35 +222,7 @@ showEventsPanel() {
     }
 
     showMessage(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-        
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-family: 'JetBrains Mono', monospace;
-            z-index: 10000;
-            max-width: 300px;
-        `;
-        
-        if (type === 'error') {
-            notification.style.background = '#EF4444';
-        } else if (type === 'success') {
-            notification.style.background = '#10B981';
-        } else {
-            notification.style.background = '#6B7280';
-        }
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
+        showNotification(message, type);
     }
 }
 

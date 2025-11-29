@@ -1,32 +1,33 @@
-// public/js/events.js
 class EventsManager {
     constructor() {
         this.events = [];
         this.categories = [];
         this.venues = [];
         this.selectedEvent = null;
-        this.socket = null; // Будет инициализирован в initWebSocket
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.initWebSocket(); // Инициализация WebSocket
+        this.loadEvents();
     }
 
     bindEvents() {
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const panel = e.currentTarget.dataset.panel;
-                if (panel) this.showPanel(panel);
-            });
+        // Обработчики для кнопок навигации
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            if (btn.dataset.panel) {
+                btn.addEventListener('click', (e) => {
+                    const panel = e.currentTarget.dataset.panel;
+                    if (panel) this.showPanel(panel);
+                });
+            }
         });
 
         document.getElementById('add-event-btn').addEventListener('click', () => this.showAddEventModal());
         document.getElementById('edit-event-btn').addEventListener('click', () => this.showEditEventModal());
         document.getElementById('refresh-btn').addEventListener('click', () => this.loadEvents());
 
-        // Новый обработчик для кнопки "Проверка на скорые мероприятия"
+        // Обработчик для кнопки проверки мероприятий
         document.getElementById('check-events-btn').addEventListener('click', () => this.showDemoReminders());
 
         document.getElementById('search-events').addEventListener('input', (e) => {
@@ -38,7 +39,6 @@ class EventsManager {
         });
 
         document.getElementById('event-form').addEventListener('submit', (e) => this.handleEventSubmit(e));
-        document.getElementById('budget-form').addEventListener('submit', (e) => this.handleBudgetSubmit(e));
 
         document.querySelectorAll('#events-table th[data-sort]').forEach(th => {
             th.addEventListener('click', () => this.sortTable(th.dataset.sort));
@@ -48,7 +48,6 @@ class EventsManager {
             const row = e.target.closest('tr');
             if (row) this.selectEvent(row);
         });
-        this.bindRealTimeEvents();
     }
 
     // Новая функция для показа демо-напоминаний
@@ -88,124 +87,40 @@ class EventsManager {
 
         // Показываем все напоминания
         demoReminders.forEach(reminder => {
-            this.showEventReminderNotification(reminder);
+            showEventReminder(reminder);
         });
 
         this.showNotification('🔔 Показаны тестовые напоминания о мероприятиях', 'info');
     }
 
-    // Функция для показа уведомления о напоминании
-    showEventReminderNotification(eventData) {
-        let remindersContainer = document.getElementById('reminders-container');
-        if (!remindersContainer) {
-            remindersContainer = document.createElement('div');
-            remindersContainer.id = 'reminders-container';
-            remindersContainer.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 20px;
-                z-index: 10000;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                max-width: 400px;
-            `;
-            document.body.appendChild(remindersContainer);
-        }
-
-        const reminder = document.createElement('div');
-        reminder.className = 'event-reminder';
-
-        let icon = '⏰';
-        let bgColor = '#F59E0B';
-
-        if (eventData.daysLeft === 1) {
-            icon = '🚨';
-            bgColor = '#EF4444';
-        } else if (eventData.daysLeft === 2) {
-            icon = '⚠️';
-            bgColor = '#F59E0B';
-        } else if (eventData.daysLeft === 3) {
-            icon = '📅';
-            bgColor = '#3B82F6';
-        }
-
-        reminder.innerHTML = `
-            <div class="reminder-content">
-                <span class="reminder-icon">${icon}</span>
-                <div class="reminder-text">
-                    <strong>${eventData.message}</strong>
-                    <div style="margin: 5px 0; font-size: 13px;">${eventData.eventName}</div>
-                    <small>Начинается: ${new Date(eventData.startTime).toLocaleString('ru-RU')}</small>
-                </div>
-                <button class="reminder-close">×</button>
-            </div>
-        `;
-
-        reminder.style.cssText = `
-            background: ${bgColor};
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            animation: slideInLeft 0.3s ease-out;
-            max-width: 350px;
-        `;
-
-        const closeBtn = reminder.querySelector('.reminder-close');
-        closeBtn.style.cssText = `
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0;
-            margin-left: 10px;
-        `;
-
-        closeBtn.addEventListener('click', () => {
-            reminder.style.animation = 'slideOutLeft 0.3s ease-in';
-            setTimeout(() => reminder.remove(), 300);
-        });
-
-        remindersContainer.appendChild(reminder);
-
-        // Автоматическое скрытие через 10 секунд
-        setTimeout(() => {
-            if (reminder.parentElement) {
-                reminder.style.animation = 'slideOutLeft 0.3s ease-in';
-                setTimeout(() => reminder.remove(), 300);
-            }
-        }, 10000);
-    }
-
-    bindRealTimeEvents() {
-        // Обработчики для мгновенного обновления данных
-        document.addEventListener('eventAdded', (e) => {
-            this.loadEvents();
-        });
-
-        document.addEventListener('eventUpdated', (e) => {
-            this.loadEvents();
-        });
-    }
-
     async loadEvents() {
         try {
-            const response = await fetch('/api/events');
-            this.events = await response.json();
-            this.displayEvents();
-            this.updateEditButton();
+            // В демо-режиме всегда используем демо-данные
+            this.useDemoData();
         } catch (error) {
-            console.log('API недоступен, используем демо-данные');
-            // Fallback на демо-данные
+            console.log('Ошибка загрузки, используем демо-данные');
             this.useDemoData();
         }
     }
 
     useDemoData() {
+        const now = new Date();
+        
+        // Мероприятие через 3 дня
+        const in3Days = new Date(now);
+        in3Days.setDate(now.getDate() + 3);
+        in3Days.setHours(14, 0, 0, 0);
+        
+        // Мероприятие через 1 день
+        const in1Day = new Date(now);
+        in1Day.setDate(now.getDate() + 1);
+        in1Day.setHours(10, 0, 0, 0);
+        
+        // Мероприятие через 5 дней
+        const in5Days = new Date(now);
+        in5Days.setDate(now.getDate() + 5);
+        in5Days.setHours(18, 0, 0, 0);
+
         this.events = [
             {
                 EventId: 1,
@@ -240,7 +155,7 @@ class EventsManager {
             {
                 EventId: 3,
                 EventName: "Веб-приложение для управления мероприятиями",
-                Description: "Демонстрация курсового проекта - система управления мероприятиями с реальным временем обновления данных",
+                Description: "Демонстрация курсового проекта - система управления мероприятиями",
                 DateTimeStart: new Date('2024-12-01T10:00:00'),
                 DateTimeFinish: new Date('2024-12-01T12:00:00'),
                 CategoryName: "Презентация",
@@ -251,36 +166,61 @@ class EventsManager {
                 ActualBudget: 0,
                 MaxNumOfGuests: 1,
                 ClientsDisplay: "Курсовая работа"
+            },
+            {
+                EventId: 4,
+                EventName: "Новогодний корпоратив",
+                Description: "Ежегодное новогоднее мероприятие для сотрудников компании",
+                DateTimeStart: new Date('2024-12-28T19:00:00'),
+                DateTimeFinish: new Date('2024-12-29T02:00:00'),
+                CategoryName: "Корпоратив",
+                VenueName: "Актовый зал",
+                UserName: "Иванов Иван",
+                Status: "Ждет утверждения",
+                EstimatedBudget: 200000,
+                ActualBudget: 0,
+                MaxNumOfGuests: 150,
+                ClientsDisplay: "ООО 'ТехноПро', ИП Сидоров"
+            },
+            {
+                EventId: 5,
+                EventName: "Стратегическое планирование на 2025 год",
+                Description: "Совещание по планированию бизнес-стратегии на следующий год",
+                DateTimeStart: in3Days,
+                DateTimeFinish: new Date(in3Days.getTime() + 4 * 60 * 60 * 1000),
+                CategoryName: "Совещание",
+                VenueName: "Переговорная Б",
+                UserName: "Петрова Анна",
+                Status: "Согласован",
+                EstimatedBudget: 0,
+                ActualBudget: 0,
+                MaxNumOfGuests: 15,
+                ClientsDisplay: "Внутреннее мероприятие"
+            },
+            {
+                EventId: 6,
+                EventName: "Презентация нового продукта",
+                Description: "Анонс и демонстрация нового программного обеспечения",
+                DateTimeStart: in1Day,
+                DateTimeFinish: new Date(in1Day.getTime() + 3 * 60 * 60 * 1000),
+                CategoryName: "Презентация",
+                VenueName: "Конференц-зал А",
+                UserName: "Иванов Иван",
+                Status: "Согласован",
+                EstimatedBudget: 75000,
+                ActualBudget: 70000,
+                MaxNumOfGuests: 100,
+                ClientsDisplay: "Ключевые клиенты, партнеры"
             }
         ];
         this.displayEvents();
+        this.displayEventsCards();
         this.updateEditButton();
         this.showNotification('Загружены демо-данные', 'info');
     }
 
     async fetchEvents() {
-        try {
-            const response = await fetch('/api/events');
-            return await response.json();
-        } catch (error) {
-            console.log('API недоступен, возвращаем демо-данные');
-            return this.events.length > 0 ? this.events : [
-                {
-                    EventId: 1,
-                    EventName: "Техническая конференция 2024",
-                    Description: "Ежегодная конференция для IT-специалистов с докладами и воркшопами",
-                    DateTimeStart: new Date('2024-12-10T09:00:00'),
-                    DateTimeFinish: new Date('2024-12-12T18:00:00'),
-                    CategoryName: "Конференция",
-                    VenueName: "Конференц-зал А",
-                    UserName: "Иванов Иван",
-                    Status: "Согласован",
-                    EstimatedBudget: 150000,
-                    ActualBudget: 145000,
-                    MaxNumOfGuests: 200
-                }
-            ];
-        }
+        return this.events;
     }
 
     displayEvents(eventsToShow = null) {
@@ -315,6 +255,53 @@ class EventsManager {
         });
     }
 
+    // Новый метод для отображения карточек мероприятий
+    displayEventsCards() {
+        const container = document.getElementById('events-cards-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.events.forEach(event => {
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            
+            // Определяем цвет по статусу
+            let statusColor = '#F59E0B'; // По умолчанию - обработка
+            if (event.Status === 'Согласован') statusColor = '#22C55E';
+            if (event.Status === 'Ждет утверждения') statusColor = '#3B82F6';
+
+            card.innerHTML = `
+                <div class="event-card-header" style="background-color: ${statusColor}">
+                    ${this.escapeHtml(event.EventName)}
+                </div>
+                <div class="event-card-content">
+                    <h3 class="event-card-title">${this.escapeHtml(event.EventName)}</h3>
+                    <p class="event-card-category">${this.escapeHtml(event.CategoryName)}</p>
+                    <div class="event-card-status">${this.escapeHtml(event.Status)}</div>
+                    <button class="event-card-btn" data-event-id="${event.EventId}">
+                        Посмотреть все мероприятия
+                    </button>
+                </div>
+            `;
+
+            // Добавляем обработчик для кнопки
+            const button = card.querySelector('.event-card-btn');
+            button.addEventListener('click', () => {
+                this.showEventDetails(event);
+            });
+
+            container.appendChild(card);
+        });
+    }
+
+    // Метод для показа деталей мероприятия
+    showEventDetails(event) {
+        this.showNotification(`Переход к мероприятию: ${event.EventName}`, 'info');
+        this.showPanel('events');
+        // Можно добавить скролл к конкретному мероприятию в таблице
+    }
+
     async showAddEventModal() {
         await this.loadModalData();
         document.getElementById('modal-title').textContent = 'Добавление мероприятия';
@@ -324,7 +311,10 @@ class EventsManager {
     }
 
     async showEditEventModal() {
-        if (!this.selectedEvent) return;
+        if (!this.selectedEvent) {
+            this.showNotification('Выберите мероприятие для редактирования', 'warning');
+            return;
+        }
 
         await this.loadModalData();
         document.getElementById('modal-title').textContent = 'Редактирование мероприятия';
@@ -370,41 +360,28 @@ class EventsManager {
     }
 
     async loadModalData() {
-        try {
-            // Загрузка категорий
-            if (this.categories.length === 0) {
-                const categoriesResponse = await fetch('/api/categories');
-                this.categories = await categoriesResponse.json();
-            }
-            this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
+        // Демо-данные для категорий
+        this.categories = [
+            { CategoryId: 1, CategoryName: "Конференция" },
+            { CategoryId: 2, CategoryName: "Семинар" },
+            { CategoryId: 3, CategoryName: "Тренинг" },
+            { CategoryId: 4, CategoryName: "Корпоратив" },
+            { CategoryId: 5, CategoryName: "Презентация" },
+            { CategoryId: 6, CategoryName: "Совещание" },
+            { CategoryId: 7, CategoryName: "Мастер-класс" }
+        ];
+        
+        // Демо-данные для мест проведения
+        this.venues = [
+            { VenueId: 1, VenueName: "Конференц-зал А" },
+            { VenueId: 2, VenueName: "Переговорная Б" },
+            { VenueId: 3, VenueName: "Актовый зал" },
+            { VenueId: 4, VenueName: "Онлайн" },
+            { VenueId: 5, VenueName: "Банкетный зал" }
+        ];
 
-            // Загрузка мест проведения
-            if (this.venues.length === 0) {
-                const venuesResponse = await fetch('/api/venues');
-                this.venues = await venuesResponse.json();
-            }
-            this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
-
-        } catch (error) {
-            console.log('API недоступен, используем демо-данные для форм');
-            // Fallback на демо-данные
-            this.categories = [
-                { CategoryId: 1, CategoryName: "Конференция" },
-                { CategoryId: 2, CategoryName: "Семинар" },
-                { CategoryId: 3, CategoryName: "Тренинг" },
-                { CategoryId: 4, CategoryName: "Корпоратив" },
-                { CategoryId: 5, CategoryName: "Презентация" }
-            ];
-            this.venues = [
-                { VenueId: 1, VenueName: "Конференц-зал А", Address: "ул. Главная, 1", Capacity: 200, Description: "Основной конференц-зал" },
-                { VenueId: 2, VenueName: "Переговорная Б", Address: "ул. Главная, 1", Capacity: 25, Description: "Малая переговорная" },
-                { VenueId: 3, VenueName: "Актовый зал", Address: "ул. Центральная, 15", Capacity: 500, Description: "Большой актовый зал" },
-                { VenueId: 4, VenueName: "Онлайн", Address: "Zoom/Teams", Capacity: 1000, Description: "Виртуальное мероприятие" }
-            ];
-
-            this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
-            this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
-        }
+        this.fillSelect('CategoryId', this.categories, 'CategoryId', 'CategoryName');
+        this.fillSelect('VenueId', this.venues, 'VenueId', 'VenueName');
     }
 
     fillSelect(selectName, data, valueField, textField) {
@@ -425,70 +402,23 @@ class EventsManager {
         const formData = new FormData(e.target);
         const eventData = Object.fromEntries(formData.entries());
         const mode = e.target.dataset.mode;
-        const eventId = e.target.dataset.eventId; // Получаем ID из атрибута формы
 
         // Валидация
         if (!this.validateEventForm(eventData)) {
             return;
         }
 
-        try {
-            let response;
-            if (mode === 'add') {
-                response = await fetch('/api/events', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(eventData)
-                });
-
-                // Создаем событие для реального времени
-                document.dispatchEvent(new CustomEvent('eventAdded', {
-                    detail: eventData
-                }));
-            } else { // mode === 'edit'
-                response = await fetch(`/api/events/${eventId}`, { // Передаём ID в URL
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(eventData) // Отправляем только изменённые данные
-                });
-
-                // Создаем событие для реального времени
-                document.dispatchEvent(new CustomEvent('eventUpdated', {
-                    detail: { ...eventData, EventId: eventId }
-                }));
-            }
-
-            const result = await response.json();
-
-            if (result.success) {
-                this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'}`, 'success');
-                this.closeModals();
-                this.loadEvents(); // Обновляем данные из API
-
-                // Уведомляем через WebSocket ПОСЛЕ обновления интерфейса
-                if (this.socket) {
-                    this.socket.emit('eventChanged', {
-                        action: mode === 'add' ? 'added' : 'updated',
-                        event: eventData,
-                        eventId: result.eventId || eventId // Возвращаем ID из ответа или из формы
-                    });
-                }
-            } else {
-                this.showNotification(`Ошибка при ${mode === 'add' ? 'добавлении' : 'обновлении'} мероприятия`, 'error');
-            }
-        } catch (error) {
-            this.showNotification('Ошибка подключения к серверу. Данные сохранены локально.', 'info');
-            this.closeModals();
-            this.loadEvents(); // Обновляем данные из API или демо-данных
+        // В демо-режиме просто показываем сообщение
+        this.showNotification(`Мероприятие успешно ${mode === 'add' ? 'добавлено' : 'обновлено'} в демо-режиме`, 'success');
+        this.closeModals();
+        
+        // Если добавление, обновляем список
+        if (mode === 'add') {
+            this.loadEvents();
         }
     }
 
     validateEventForm(data) {
-        // Валидация дат
         const startDate = new Date(data.DateTimeStart);
         const endDate = new Date(data.DateTimeFinish);
 
@@ -502,8 +432,7 @@ class EventsManager {
             return false;
         }
 
-        // Валидация числовых полей
-        if (isNaN(data.EstimatedBudget) || data.EstimatedBudget <= 0) {
+        if (data.EstimatedBudget && (isNaN(data.EstimatedBudget) || data.EstimatedBudget <= 0)) {
             this.showNotification('Предполагаемый бюджет должен быть положительным числом', 'error');
             return false;
         }
@@ -558,20 +487,32 @@ class EventsManager {
         });
 
         // Показываем выбранную панель
-        document.getElementById(`${panelName}-panel`).classList.add('active');
+        const targetPanel = document.getElementById(`${panelName}-panel`);
+        if (targetPanel) {
+            targetPanel.classList.add('active');
+        }
 
         // Обновляем заголовок
         const titles = {
-            'events': 'Мероприятия',
+            'events': 'Таблица мероприятий',
+            'events-cards': 'Мероприятия',
             'profile': 'Личный кабинет'
         };
         document.getElementById('current-panel-title').textContent = titles[panelName] || 'Панель';
 
-        // Обновляем активную кнопку в сайдбаре
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        // Обновляем активную кнопку в навигации
+        document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelector(`[data-panel="${panelName}"]`).classList.add('active');
+        const activeBtn = document.querySelector(`[data-panel="${panelName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        // Если показываем карточки, обновляем их
+        if (panelName === 'events-cards') {
+            this.displayEventsCards();
+        }
     }
 
     selectEvent(row) {
@@ -645,67 +586,6 @@ class EventsManager {
     }
 
     showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
-            color: white;
-            font-family: 'JetBrains Mono', monospace;
-            z-index: 10000;
-            max-width: 300px;
-        `;
-
-        if (type === 'error') {
-            notification.style.background = '#EF4444';
-        } else if (type === 'success') {
-            notification.style.background = '#10B981';
-        } else {
-            notification.style.background = '#6B7280';
-        }
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
-
-    initWebSocket() {
-        try {
-            // Используем глобальный socket из app.js
-            if (window.socket) {
-                this.socket = window.socket;
-
-                this.socket.on('eventsUpdated', (data) => {
-                    // Проверяем авторизацию перед показом уведомлений
-                    const currentUser = localStorage.getItem('currentUser');
-                    if (currentUser) {
-                        this.showNotification('Данные мероприятий обновлены!', 'info');
-                        this.loadEvents(); // Обновляем данные при получении события
-                    }
-                });
-
-                this.socket.on('eventReminder', (data) => {
-                    // Проверяем авторизацию перед показом напоминаний
-                    const currentUser = localStorage.getItem('currentUser');
-                    if (currentUser) {
-                        this.showEventReminderNotification(data);
-                    }
-                });
-            } else {
-                console.log('WebSocket недоступен (socket не определен в window), работаем в офлайн-режиме');
-            }
-        } catch (error) {
-            console.log('WebSocket недоступен, работаем в офлайн-режиме');
-        }
+        showNotification(message, type);
     }
 }
-
-// Инициализация происходит в app.js после DOMContentLoaded
-// const eventsManager = new EventsManager(); // Убираем из events.js
