@@ -251,8 +251,8 @@ class EventsManager {
 
             row.innerHTML = `
                 <td>${event.EventId}</td>
-                <td>${this.escapeHtml(event.EventName)}</td>
-                <td>${this.escapeHtml(event.Description)}</td>
+                <td title="${this.escapeHtml(event.EventName)}">${this.escapeHtml(event.EventName)}</td>
+                <td title="${this.escapeHtml(event.Description)}">${this.truncateText(event.Description, 50)}</td>
                 <td>${this.formatDateTime(event.DateTimeStart)}</td>
                 <td>${this.formatDateTime(event.DateTimeFinish)}</td>
                 <td>${this.escapeHtml(event.CategoryName)}</td>
@@ -292,9 +292,7 @@ class EventsManager {
             if (event.Status === 'Ждет утверждения') statusColor = '#3B82F6';
 
             card.innerHTML = `
-                <div class="event-card-header" style="background-color: ${statusColor}">
-                    ${this.escapeHtml(event.EventName)}
-                </div>
+                <div class="event-card-header" style="background-color: ${statusColor}"></div>
                 <div class="event-card-content">
                     <h3 class="event-card-title">${this.escapeHtml(event.EventName)}</h3>
                     <p class="event-card-category">${this.escapeHtml(event.CategoryName)}</p>
@@ -318,7 +316,6 @@ class EventsManager {
 
     // Метод для показа деталей мероприятия
     showEventDetails(event) {
-        this.showNotification(`Переход к мероприятию: ${event.EventName}`, 'info');
         this.showPanel('events');
         
         // Выделяем соответствующую строку в таблице
@@ -489,6 +486,12 @@ class EventsManager {
         return div.innerHTML;
     }
 
+    truncateText(text, maxLength) {
+        if (!text) return '';
+        if (text.length <= maxLength) return this.escapeHtml(text);
+        return this.escapeHtml(text.substring(0, maxLength)) + '...';
+    }
+
     formatDateTime(dateTimeString) {
         if (!dateTimeString) return 'Не указано';
         try {
@@ -567,8 +570,7 @@ class EventsManager {
 
         this.updateEditButton();
         
-        // Показываем уведомление о выборе
-        this.showNotification(`Выбрано мероприятие: ${this.selectedEvent.EventName}`, 'info');
+        // УБРАНО: уведомление о выборе строки
     }
 
     clearSelection() {
