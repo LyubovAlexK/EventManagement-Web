@@ -10,8 +10,11 @@ let eventsManager = null;
 function initApp() {
     initGlobalHandlers();
     
-    // Инициализируем EventsManager
+    // Инициализируем EventsManager и делаем его глобально доступным
     eventsManager = new EventsManager();
+    window.eventsManager = eventsManager;
+    
+    console.log('App initialized with eventsManager:', eventsManager);
 }
 
 // Глобальная функция для уведомлений
@@ -20,10 +23,36 @@ function showNotification(message, type = 'info') {
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
     
+    // Убедимся, что уведомление поверх всех элементов
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-family: 'JetBrains Mono', sans-serif;
+        z-index: 10000;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    `;
+    
+    if (type === 'error') {
+        notification.style.background = '#EF4444';
+    } else if (type === 'success') {
+        notification.style.background = '#10B981';
+    } else if (type === 'warning') {
+        notification.style.background = '#F59E0B';
+    } else {
+        notification.style.background = '#6B7280';
+    }
+    
     document.body.appendChild(notification);
     
     setTimeout(() => {
-        notification.remove();
+        if (notification.parentElement) {
+            notification.remove();
+        }
     }, 5000);
 }
 
@@ -134,7 +163,8 @@ function initGlobalHandlers() {
     document.addEventListener('error', (e) => {
         if (e.target.tagName === 'IMG') {
             console.warn('Image failed to load:', e.target.src);
-            e.target.alt = 'Изображение не загружено';
+            // Устанавливаем fallback иконку или скрываем
+            e.target.style.display = 'none';
         }
     }, true);
 
@@ -192,5 +222,67 @@ function formatCurrency(amount) {
         return 'Неверная сумма';
     }
 }
+
+// Добавляем CSS анимации
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .reminder-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .reminder-text {
+        flex: 1;
+    }
+
+    .reminder-text strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+    }
+
+    .reminder-text small {
+        opacity: 0.9;
+        font-size: 11px;
+    }
+
+    /* Мобильные стили для уведомлений */
+    @media (max-width: 768px) {
+        #reminders-container {
+            top: 10px !important;
+            left: 10px !important;
+            right: 10px !important;
+            max-width: calc(100% - 20px) !important;
+        }
+
+        .event-reminder {
+            max-width: 100% !important;
+            font-size: 12px !important;
+            padding: 12px 15px !important;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Делаем функции глобально доступными
+window.showNotification = showNotification;
+window.showEventReminder = showEventReminder;
+window.formatDate = formatDate;
+window.formatTime = formatTime;
+window.formatDateTime = formatDateTime;
+window.formatCurrency = formatCurrency;
 
 console.log('🎯 Event Management System ready in demo mode!');

@@ -5,8 +5,8 @@ class AuthManager {
     }
 
     init() {
-        this.checkAuthStatus();
         this.bindEvents();
+        this.checkAuthStatus();
     }
 
     bindEvents() {
@@ -18,7 +18,7 @@ class AuthManager {
         });
     }
 
-    async login() {
+    login() {
         const login = document.getElementById('login').value;
         const password = document.getElementById('password').value;
 
@@ -66,37 +66,26 @@ class AuthManager {
             this.currentUser = user;
             this.showApp();
             this.showMessage('Успешный вход в демо-режиме!', 'success');
-            this.hideAuthCompletely();
         } else {
             this.showMessage('Неверный логин или пароль!', 'error');
-        }
-    }
-
-    // Полностью скрываем блок авторизации
-    hideAuthCompletely() {
-        const authPage = document.getElementById('auth-page');
-        if (authPage) {
-            authPage.style.display = 'none';
-        }
-    }
-
-    showAuthCompletely() {
-        const authPage = document.getElementById('auth-page');
-        if (authPage) {
-            authPage.style.display = 'flex';
         }
     }
 
     logout() {
         this.currentUser = null;
         this.showAuth();
-        this.showAuthCompletely();
         this.showMessage('Вы вышли из системы', 'info');
         this.clearAllNotifications();
+        
+        // Сбрасываем выбранное мероприятие
+        if (window.eventsManager) {
+            window.eventsManager.selectedEvent = null;
+            window.eventsManager.updateEditButton();
+        }
     }
 
     clearAllNotifications() {
-        const notifications = document.querySelectorAll('#notifications-container, #reminders-container, .realtime-notification, .event-reminder');
+        const notifications = document.querySelectorAll('.notification, .event-reminder, #reminders-container');
         notifications.forEach(notification => {
             notification.remove();
         });
@@ -105,10 +94,15 @@ class AuthManager {
     checkAuthStatus() {
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
-            const user = JSON.parse(savedUser);
-            this.currentUser = user;
-            this.showApp();
-            this.hideAuthCompletely();
+            try {
+                const user = JSON.parse(savedUser);
+                this.currentUser = user;
+                this.showApp();
+            } catch (e) {
+                console.error('Error parsing saved user:', e);
+                localStorage.removeItem('currentUser');
+                this.showAuth();
+            }
         }
     }
 
@@ -116,16 +110,28 @@ class AuthManager {
         document.getElementById('auth-page').classList.add('active');
         document.getElementById('app-page').classList.remove('active');
         localStorage.removeItem('currentUser');
+        
+        // Очищаем поля формы
+        document.getElementById('login').value = 'demo';
+        document.getElementById('password').value = 'demo';
     }
 
     showApp() {
         document.getElementById('auth-page').classList.remove('active');
         document.getElementById('app-page').classList.add('active');
-        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        
+        if (this.currentUser) {
+            localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        }
         
         this.updateUI();
-        eventsManager.loadEvents();
-        this.showEventsPanel();
+        
+        // Загружаем мероприятия после инициализации eventsManager
+        if (window.eventsManager) {
+            window.eventsManager.loadEvents();
+        }
+        
+        this.showEventsCardsPanel(); // Теперь по умолчанию открываем карточки
     }
 
     updateUI() {
@@ -134,7 +140,8 @@ class AuthManager {
         this.checkUserRole();
     }
 
-    showEventsPanel() {
+    // Теперь по умолчанию открываем панель с карточками
+    showEventsCardsPanel() {
         const eventsPanel = document.getElementById('events-panel');
         const eventsCardsPanel = document.getElementById('events-cards-panel');
         const profilePanel = document.getElementById('profile-panel');
@@ -144,27 +151,33 @@ class AuthManager {
         if (eventsCardsPanel) eventsCardsPanel.classList.remove('active');
         if (profilePanel) profilePanel.classList.remove('active');
         
-        // Показываем только панель мероприятий (таблицу)
-        if (eventsPanel) eventsPanel.classList.add('active');
+        // Показываем только панель мероприятий (карточки)
+        if (eventsCardsPanel) eventsCardsPanel.classList.add('active');
         
         // Обновляем заголовок
         const titleElement = document.getElementById('current-panel-title');
-        if (titleElement) titleElement.textContent = 'Мероприятия (таблица)';
+        if (titleElement) titleElement.textContent = 'Мероприятия';
         
-        // Активируем кнопку мероприятий в навигации
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        // Активируем кнопку карточек в навигации
+        document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        const eventsBtn = document.querySelector('[data-panel="events"]');
-        if (eventsBtn) eventsBtn.classList.add('active');
+        const eventsCardsBtn = document.querySelector('[data-panel="events-cards"]');
+        if (eventsCardsBtn) eventsCardsBtn.classList.add('active');
     }
 
     updateUserProfile() {
         if (!this.currentUser) return;
 
         const fullName = `${this.currentUser.LastName} ${this.currentUser.Name} ${this.currentUser.MiddleName || ''}`.trim();
-        document.getElementById('user-fullname').textContent = fullName;
-        document.getElementById('user-fullname-profile').textContent = fullName;
+        
+        // Обновляем имя пользователя в интерфейсе
+        const userFullnameElement = document.getElementById('user-fullname');
+        const userFullnameProfileElement = document.getElementById('user-fullname-profile');
+        
+        if (userFullnameElement) userFullnameElement.textContent = fullName;
+        if (userFullnameProfileElement) userFullnameProfileElement.textContent = fullName;
+        
         document.getElementById('user-specialty').textContent = this.currentUser.Specialty || 'Менеджер';
         document.getElementById('user-phone').textContent = this.currentUser.Phone || 'Не указан';
         
@@ -177,11 +190,17 @@ class AuthManager {
         const editBtn = document.getElementById('edit-event-btn');
         
         if (addBtn) {
-            addBtn.innerHTML = '<span>Добавить мероприятие</span>';
+            addBtn.innerHTML = `
+                <img src="img/plus.png" alt="Добавить" class="btn-icon">
+                Добавить
+            `;
         }
         
         if (editBtn) {
-            editBtn.innerHTML = '<span>Редактировать</span>';
+            editBtn.innerHTML = `
+                <img src="img/editl.png" alt="Редактировать" class="btn-icon">
+                Редактировать
+            `;
         }
     }
 
@@ -193,37 +212,29 @@ class AuthManager {
 
     async loadUserEvents() {
         try {
-            const events = await eventsManager.fetchEvents();
-            const userEvents = events.filter(event => 
-                event.UserName.includes(this.currentUser.LastName) || 
-                event.UserName.includes(this.currentUser.Name)
-            );
-            
-            document.getElementById('user-events-count').textContent = userEvents.length;
-            
-            const eventsList = document.getElementById('user-events-list');
-            eventsList.innerHTML = '';
-            
-            userEvents.slice(0, 5).forEach(event => {
-                const li = document.createElement('li');
-                li.textContent = `${event.EventName} (${event.Status})`;
-                eventsList.appendChild(li);
-            });
-        } catch (error) {
-            console.error('Error loading user events:', error);
-            // В демо-режиме показываем тестовые данные
+            // В демо-режиме просто показываем тестовые данные
             document.getElementById('user-events-count').textContent = '2';
             const eventsList = document.getElementById('user-events-list');
-            eventsList.innerHTML = `
-                <li>Техническая конференция 2024 (Согласован)</li>
-                <li>Корпоративный тренинг (В обработке)</li>
-            `;
+            if (eventsList) {
+                eventsList.innerHTML = `
+                    <li>Техническая конференция 2024 (Согласован)</li>
+                    <li>Корпоративный тренинг (В обработке)</li>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading user events:', error);
         }
     }
 
     showMessage(message, type = 'info') {
-        showNotification(message, type);
+        if (typeof showNotification === 'function') {
+            showNotification(message, type);
+        } else {
+            // Fallback если функция showNotification не доступна
+            alert(`${type.toUpperCase()}: ${message}`);
+        }
     }
 }
 
+// Создаем глобальный экземпляр AuthManager
 const authManager = new AuthManager();

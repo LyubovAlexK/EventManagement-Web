@@ -18,7 +18,10 @@
             <div class="auth-form">
                 <input type="text" id="login" placeholder="Логин" value="demo">
                 <input type="password" id="password" placeholder="Пароль" value="demo">
-                <button id="login-btn" class="btn-primary">Войти</button>
+                <button id="login-btn" class="btn-primary">
+                    <img src="img/events.png" alt="" class="btn-icon">
+                    Войти
+                </button>
                 <div class="demo-info">
                     <p><strong>Демо-доступ:</strong></p>
                     <p>Логин: <code>demo</code> / Пароль: <code>demo</code></p>
@@ -31,110 +34,173 @@
     <!-- Основное приложение -->
     <div id="app-page" class="page">
         <header class="app-header">
-            <div class="header-left">
-                <h1>Event Management System</h1>
-                <span class="demo-badge">Демо-режим</span>
+            <div class="header-top">
+                <div class="header-left">
+                    <h1>Event Management System</h1>
+                    <span class="demo-badge">Демо-режим</span>
+                </div>
+                <div class="header-right">
+                    <span id="user-fullname">Пользователь</span>
+                    <button id="logout-btn" class="btn-secondary">
+                        <img src="img/logout.png" alt="Выйти" class="btn-icon">
+                        Выйти
+                    </button>
+                </div>
             </div>
-            <div class="header-right">
-                <span id="user-fullname">Пользователь</span>
-                <button id="logout-btn" class="btn-secondary">Выйти</button>
-            </div>
+            
+            <!-- Навигация в header -->
+            <nav class="main-nav">
+                <button class="nav-btn active" data-panel="events-cards">
+                    <img src="img/events.png" alt="" class="nav-icon">
+                    Мероприятия (карточки)
+                </button>
+                <button class="nav-btn" data-panel="events">
+                    <img src="img/holidays-party.png" alt="" class="nav-icon">
+                    Мероприятия (таблица)
+                </button>
+                <button class="nav-btn" data-panel="profile">
+                    <img src="img/profile.png" alt="" class="nav-icon">
+                    Профиль
+                </button>
+            </nav>
         </header>
 
-        <div class="app-layout">
-            <!-- Боковая панель -->
-            <nav class="sidebar">
-                <div class="sidebar-content">
-                    <button class="sidebar-btn active" data-panel="events">
-                        📊 Мероприятия (таблица)
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="content-header">
+                <h2 id="current-panel-title">Мероприятия</h2>
+                <div class="actions">
+                    <button id="add-event-btn" class="btn-primary">
+                        <img src="img/plus.png" alt="Добавить" class="btn-icon">
+                        Добавить
                     </button>
-                    <button class="sidebar-btn" data-panel="events-cards">
-                        🎴 Мероприятия (карточки)
+                    <button id="edit-event-btn" class="btn-secondary" disabled>
+                        <img src="img/editl.png" alt="Редактировать" class="btn-icon">
+                        Редактировать
                     </button>
-                    <button class="sidebar-btn" data-panel="profile">
-                        👤 Профиль
+                    <button id="refresh-btn" class="btn-secondary">
+                        <img src="img/up-down-arow.png" alt="Обновить" class="btn-icon">
+                        Обновить
+                    </button>
+                    <button id="check-events-btn" class="btn-info">
+                        <img src="img/notification.png" alt="Напоминания" class="btn-icon">
+                        Тест напоминания
                     </button>
                 </div>
-            </nav>
+            </div>
 
-            <!-- Основной контент -->
-            <main class="main-content">
-                <div class="content-header">
-                    <h2 id="current-panel-title">Мероприятия (таблица)</h2>
-                    <div class="actions">
-                        <button id="add-event-btn" class="btn-primary">➕ Добавить</button>
-                        <button id="edit-event-btn" class="btn-secondary" disabled>✏️ Редактировать</button>
-                        <button id="refresh-btn" class="btn-secondary">🔄 Обновить</button>
-                        <button id="check-events-btn" class="btn-info">🔔 Тест напоминания</button>
-                    </div>
+            <!-- Панель мероприятий (карточки) -->
+            <div id="events-cards-panel" class="content-panel active">
+                <div class="events-cards-container" id="events-cards-container">
+                    <!-- Карточки загружаются через JavaScript -->
                 </div>
+            </div>
 
-                <!-- Панель мероприятий (таблица) -->
-                <div id="events-panel" class="content-panel active">
-                    <div class="search-container">
+            <!-- Панель мероприятий (таблица) -->
+            <div id="events-panel" class="content-panel">
+                <div class="search-container">
+                    <div class="search-box-wrapper">
+                        <img src="img/search.png" alt="Поиск" class="search-icon">
                         <input type="text" id="search-events" placeholder="Поиск мероприятий..." class="search-box">
                     </div>
-                    <div class="table-container">
-                        <table id="events-table">
-                            <thead>
-                                <tr>
-                                    <th data-sort="EventId">ID</th>
-                                    <th data-sort="EventName">Название</th>
-                                    <th data-sort="Description">Описание</th>
-                                    <th data-sort="DateTimeStart">Начало</th>
-                                    <th data-sort="DateTimeFinish">Окончание</th>
-                                    <th data-sort="CategoryName">Категория</th>
-                                    <th data-sort="VenueName">Место</th>
-                                    <th data-sort="Status">Статус</th>
-                                    <th data-sort="EstimatedBudget">План. бюджет</th>
-                                    <th data-sort="ActualBudget">Факт. бюджет</th>
-                                    <th data-sort="MaxNumOfGuests">Гости</th>
-                                </tr>
-                            </thead>
-                            <tbody id="events-tbody">
-                                <!-- Данные загружаются через JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
+                <div class="table-container">
+                    <table id="events-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="EventId">
+                                    ID
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="EventName">
+                                    Название
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="Description">
+                                    Описание
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="DateTimeStart">
+                                    Начало
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="DateTimeFinish">
+                                    Окончание
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="CategoryName">
+                                    Категория
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="VenueName">
+                                    Место
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="Status">
+                                    Статус
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="EstimatedBudget">
+                                    План. бюджет
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="ActualBudget">
+                                    Факт. бюджет
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                                <th data-sort="MaxNumOfGuests">
+                                    Гости
+                                    <img src="img/up-down-arow.png" alt="Сортировка" class="sort-icon">
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-tbody">
+                            <!-- Данные загружаются через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                <!-- Панель мероприятий (карточки) -->
-                <div id="events-cards-panel" class="content-panel">
-                    <div class="events-cards-container" id="events-cards-container">
-                        <!-- Карточки загружаются через JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Панель профиля -->
-                <div id="profile-panel" class="content-panel">
-                    <div class="profile-container">
-                        <div class="profile-card">
-                            <h3>Личная информация</h3>
-                            <div class="profile-info">
-                                <p><strong>ФИО:</strong> <span id="user-fullname-profile">-</span></p>
-                                <p><strong>Должность:</strong> <span id="user-specialty">-</span></p>
-                                <p><strong>Телефон:</strong> <span id="user-phone">-</span></p>
-                                <p><strong>Мои мероприятия:</strong> <span id="user-events-count">0</span></p>
-                            </div>
-                        </div>
-                        <div class="profile-events">
-                            <h3>Последние мероприятия</h3>
-                            <ul id="user-events-list">
-                                <!-- Список мероприятий пользователя -->
-                            </ul>
+            <!-- Панель профиля -->
+            <div id="profile-panel" class="content-panel">
+                <div class="profile-container">
+                    <div class="profile-card">
+                        <h3>
+                            <img src="img/profile.png" alt="Профиль" class="section-icon">
+                            Личная информация
+                        </h3>
+                        <div class="profile-info">
+                            <p><strong>ФИО:</strong> <span id="user-fullname-profile">-</span></p>
+                            <p><strong>Должность:</strong> <span id="user-specialty">-</span></p>
+                            <p><strong>Телефон:</strong> <span id="user-phone">-</span></p>
+                            <p><strong>Мои мероприятия:</strong> <span id="user-events-count">0</span></p>
                         </div>
                     </div>
+                    <div class="profile-events">
+                        <h3>
+                            <img src="img/events.png" alt="Мероприятия" class="section-icon">
+                            Последние мероприятия
+                        </h3>
+                        <ul id="user-events-list">
+                            <!-- Список мероприятий пользователя -->
+                        </ul>
+                    </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
     <!-- Модальное окно добавления/редактирования мероприятия -->
     <div id="event-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-title">Добавление мероприятия</h3>
-                <button class="modal-close">×</button>
+                <h3 id="modal-title">
+                    <img src="img/events.png" alt="Мероприятие" class="section-icon">
+                    Добавление мероприятия
+                </h3>
+                <button class="modal-close">
+                    <img src="img/close.png" alt="Закрыть">
+                </button>
             </div>
             <form id="event-form">
                 <div class="form-row">
@@ -167,8 +233,14 @@
                     <input type="number" name="MaxNumOfGuests" placeholder="Макс. количество гостей" min="1" required class="input-box">
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="modal-cancel btn-secondary">Отмена</button>
-                    <button type="submit" class="btn-primary">Сохранить</button>
+                    <button type="button" class="modal-cancel btn-secondary">
+                        <img src="img/close.png" alt="Отмена" class="btn-icon">
+                        Отмена
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <img src="img/plus.png" alt="Сохранить" class="btn-icon">
+                        Сохранить
+                    </button>
                 </div>
             </form>
         </div>

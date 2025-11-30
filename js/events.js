@@ -13,8 +13,8 @@ class EventsManager {
     }
 
     bindEvents() {
-        // Обработчики для кнопок навигации
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        // Обработчики для кнопок навигации в header
+        document.querySelectorAll('.nav-btn').forEach(btn => {
             if (btn.dataset.panel) {
                 btn.addEventListener('click', (e) => {
                     const panel = e.currentTarget.dataset.panel;
@@ -44,9 +44,20 @@ class EventsManager {
             th.addEventListener('click', () => this.sortTable(th.dataset.sort));
         });
 
+        // Обработчик для выделения строк в таблице
         document.getElementById('events-tbody').addEventListener('click', (e) => {
             const row = e.target.closest('tr');
-            if (row) this.selectEvent(row);
+            if (row) {
+                this.selectEvent(row);
+                e.stopPropagation(); // Предотвращаем всплытие, чтобы не мешать другим обработчикам
+            }
+        });
+
+        // Обработчик для снятия выделения при клике вне таблицы
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#events-table')) {
+                this.clearSelection();
+            }
         });
     }
 
@@ -233,6 +244,7 @@ class EventsManager {
             const row = document.createElement('tr');
             row.dataset.eventId = event.EventId;
 
+            // Добавляем класс selected если это выбранное мероприятие
             if (this.selectedEvent && this.selectedEvent.EventId === event.EventId) {
                 row.classList.add('selected');
             }
@@ -250,6 +262,14 @@ class EventsManager {
                 <td>${this.formatCurrency(event.ActualBudget)}</td>
                 <td>${event.MaxNumOfGuests}</td>
             `;
+
+            // Добавляем обработчик для выделения строки
+            row.addEventListener('click', (e) => {
+                // Предотвращаем выделение при клике на ссылки или кнопки внутри строки
+                if (e.target.tagName !== 'A' && e.target.tagName !== 'BUTTON') {
+                    this.selectEvent(row);
+                }
+            });
 
             tbody.appendChild(row);
         });
@@ -280,6 +300,7 @@ class EventsManager {
                     <p class="event-card-category">${this.escapeHtml(event.CategoryName)}</p>
                     <div class="event-card-status">${this.escapeHtml(event.Status)}</div>
                     <button class="event-card-btn" data-event-id="${event.EventId}">
+                        <img src="img/events.png" alt="Посмотреть" class="btn-icon">
                         Посмотреть все мероприятия
                     </button>
                 </div>
@@ -299,12 +320,25 @@ class EventsManager {
     showEventDetails(event) {
         this.showNotification(`Переход к мероприятию: ${event.EventName}`, 'info');
         this.showPanel('events');
-        // Можно добавить скролл к конкретному мероприятию в таблице
+        
+        // Выделяем соответствующую строку в таблице
+        setTimeout(() => {
+            const row = document.querySelector(`#events-table tr[data-event-id="${event.EventId}"]`);
+            if (row) {
+                this.selectEvent(row);
+                
+                // Прокручиваем к выделенной строке
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
     }
 
     async showAddEventModal() {
         await this.loadModalData();
-        document.getElementById('modal-title').textContent = 'Добавление мероприятия';
+        document.getElementById('modal-title').innerHTML = `
+            <img src="img/events.png" alt="Мероприятие" class="section-icon">
+            Добавление мероприятия
+        `;
         document.getElementById('event-form').reset();
         document.getElementById('event-form').dataset.mode = 'add';
         document.getElementById('event-modal').classList.add('active');
@@ -317,7 +351,10 @@ class EventsManager {
         }
 
         await this.loadModalData();
-        document.getElementById('modal-title').textContent = 'Редактирование мероприятия';
+        document.getElementById('modal-title').innerHTML = `
+            <img src="img/editl.png" alt="Редактирование" class="section-icon">
+            Редактирование мероприятия
+        `;
         document.getElementById('event-form').dataset.mode = 'edit';
         document.getElementById('event-form').dataset.eventId = this.selectedEvent.EventId;
 
@@ -501,7 +538,7 @@ class EventsManager {
         document.getElementById('current-panel-title').textContent = titles[panelName] || 'Панель';
 
         // Обновляем активную кнопку в навигации
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         const activeBtn = document.querySelector(`[data-panel="${panelName}"]`);
@@ -529,11 +566,39 @@ class EventsManager {
         this.selectedEvent = this.events.find(event => event.EventId === eventId);
 
         this.updateEditButton();
+        
+        // Показываем уведомление о выборе
+        this.showNotification(`Выбрано мероприятие: ${this.selectedEvent.EventName}`, 'info');
+    }
+
+    clearSelection() {
+        // Убираем выделение со всех строк
+        document.querySelectorAll('#events-table tr').forEach(tr => {
+            tr.classList.remove('selected');
+        });
+
+        this.selectedEvent = null;
+        this.updateEditButton();
     }
 
     updateEditButton() {
         const editBtn = document.getElementById('edit-event-btn');
-        editBtn.disabled = !this.selectedEvent;
+        if (editBtn) {
+            editBtn.disabled = !this.selectedEvent;
+            
+            // Обновляем текст кнопки в зависимости от состояния
+            if (this.selectedEvent) {
+                editBtn.innerHTML = `
+                    <img src="img/editl.png" alt="Редактировать" class="btn-icon">
+                    Редактировать "${this.selectedEvent.EventName}"
+                `;
+            } else {
+                editBtn.innerHTML = `
+                    <img src="img/editl.png" alt="Редактировать" class="btn-icon">
+                    Редактировать
+                `;
+            }
+        }
     }
 
     filterEvents(searchTerm) {
