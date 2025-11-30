@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Менеджер мероприятий</title>
+    <title>АИС Планирование мероприятий - Demo</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -12,7 +12,7 @@
     <div id="auth-page" class="page active">
         <div class="auth-container">
             <div class="auth-header">
-                <h1>Менеджер мероприятий</h1>
+                <h1>АИС Планирование мероприятий</h1>
                 <p>Демо-режим</p>
             </div>
             <div class="auth-form">
@@ -31,7 +31,7 @@
         <header class="app-header">
             <div class="header-top">
                 <div class="header-left">
-                    <h1>Менеджер мероприятий</h1>
+                    <h1>АИС Планирование мероприятий</h1>
                     <span class="demo-badge">Демо-режим</span>
                 </div>
                 <div class="header-right">
@@ -64,7 +64,18 @@
         <main class="main-content">
             <div class="content-header">
                 <h2 id="current-panel-title">Мероприятия</h2>
-                <div class="actions">
+            </div>
+
+            <!-- Панель мероприятий (карточки) -->
+            <div id="events-cards-panel" class="content-panel active">
+                <div class="events-cards-container" id="events-cards-container">
+                    <!-- Карточки загружаются через JavaScript -->
+                </div>
+            </div>
+
+            <!-- Панель мероприятий (таблица) -->
+            <div id="events-panel" class="content-panel">
+                <div class="table-actions">
                     <button id="add-event-btn" class="btn-primary">
                         <img src="img/plus.png" alt="Добавить" class="btn-icon">
                         Добавить
@@ -82,17 +93,6 @@
                         Тест напоминания
                     </button>
                 </div>
-            </div>
-
-            <!-- Панель мероприятий (карточки) -->
-            <div id="events-cards-panel" class="content-panel active">
-                <div class="events-cards-container" id="events-cards-container">
-                    <!-- Карточки загружаются через JavaScript -->
-                </div>
-            </div>
-
-            <!-- Панель мероприятий (таблица) -->
-            <div id="events-panel" class="content-panel">
                 <div class="search-container">
                     <div class="search-box-wrapper">
                         <img src="img/search.png" alt="Поиск" class="search-icon">
@@ -101,7 +101,7 @@
                 </div>
                 <div class="table-container">
                     <table id="events-table">
-                        <thead >
+                        <thead>
                             <tr>
                                 <th data-sort="EventId">
                                     ID

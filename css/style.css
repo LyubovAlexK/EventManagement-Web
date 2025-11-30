@@ -19,6 +19,7 @@
     --warning-color: #F59E0B;
     --info-color: #3B82F6;
     --error-color: #EF4444;
+    --gradient-start: #a855f7;
 }
 
 body {
@@ -272,9 +273,12 @@ body {
     font-weight: 600;
 }
 
-.actions {
+/* Кнопки действий для таблицы */
+.table-actions {
     display: flex;
     gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .btn-secondary, .btn-info {
@@ -432,7 +436,7 @@ body {
 
 .event-card-header {
     height: 8px;
-    /* Только цвет, без текста */
+    /* Градиент будет задаваться через JavaScript */
 }
 
 .event-card-content {
@@ -455,12 +459,12 @@ body {
 .event-card-status {
     display: inline-block;
     padding: 6px 12px;
-    background: var(--primary-color-30);
     border-radius: 20px;
     font-size: 12px;
     margin-bottom: 15px;
     font-weight: 500;
-    color: var(--text-color);
+    color: white;
+    /* Цвет фона будет задаваться через JavaScript */
 }
 
 .event-card-btn {
@@ -774,7 +778,7 @@ body {
         align-items: flex-start;
     }
     
-    .actions {
+    .table-actions {
         width: 100%;
         flex-wrap: wrap;
     }

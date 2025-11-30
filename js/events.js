@@ -286,17 +286,20 @@ class EventsManager {
             const card = document.createElement('div');
             card.className = 'event-card';
             
-            // Определяем цвет по статусу (сохраняем оригинальные цвета)
+            // Определяем цвет по статусу
             let statusColor = '#F59E0B'; // В обработке
             if (event.Status === 'Согласован') statusColor = '#22C55E';
             if (event.Status === 'Ждет утверждения') statusColor = '#3B82F6';
 
+            // Создаем градиент от #a855f7 до цвета статуса
+            const gradient = `linear-gradient(to right, #a855f7, ${statusColor})`;
+
             card.innerHTML = `
-                <div class="event-card-header" style="background-color: ${statusColor}"></div>
+                <div class="event-card-header" style="background: ${gradient}"></div>
                 <div class="event-card-content">
                     <h3 class="event-card-title">${this.escapeHtml(event.EventName)}</h3>
                     <p class="event-card-category">${this.escapeHtml(event.CategoryName)}</p>
-                    <div class="event-card-status">${this.escapeHtml(event.Status)}</div>
+                    <div class="event-card-status" style="background-color: ${statusColor}">${this.escapeHtml(event.Status)}</div>
                     <button class="event-card-btn" data-event-id="${event.EventId}">
                         <img src="img/events.png" alt="Посмотреть" class="btn-icon">
                         Посмотреть все мероприятия
@@ -569,8 +572,6 @@ class EventsManager {
         this.selectedEvent = this.events.find(event => event.EventId === eventId);
 
         this.updateEditButton();
-        
-        // УБРАНО: уведомление о выборе строки
     }
 
     clearSelection() {

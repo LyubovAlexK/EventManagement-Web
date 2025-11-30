@@ -1,6 +1,6 @@
 // Главный файл приложения - Демо-режим
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Event Management System initialized - Demo Mode');
+    console.log('🚀 АИС Планирование мероприятий initialized - Demo Mode');
     initApp();
 });
 
@@ -285,4 +285,4 @@ window.formatTime = formatTime;
 window.formatDateTime = formatDateTime;
 window.formatCurrency = formatCurrency;
 
-console.log('🎯 Event Management System ready in demo mode!');
+console.log('🎯 АИС Планирование мероприятий ready in demo mode!');
